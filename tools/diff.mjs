@@ -7,13 +7,20 @@
 //   node tools/diff.mjs s07                   # only one sequence
 //   node tools/diff.mjs --target https://my-app.up.railway.app
 //   node tools/diff.mjs --examples            # also replay pruebas/ejemplos.jsonl
+//
+// Sequences listed in experiments/superseded.json ({ "s03": "reason" }) recorded a version of the
+// original that no longer exists: they stay in the log as evidence and are reported as SKIP.
+// The token sent to the target is REPLACEMENT_TOKEN (falls back to TOKEN).
+import { existsSync, readFileSync } from 'node:fs';
 import { loadEnv, send, sameBody, readJsonl } from './lib.mjs';
 
 loadEnv();
 const args = process.argv.slice(2);
 const tIdx = args.indexOf('--target');
 const TARGET = tIdx >= 0 ? args[tIdx + 1] : process.env.REPLACEMENT_URL ?? 'http://localhost:3000';
-const TOKEN = process.env.TOKEN;
+const TOKEN = process.env.REPLACEMENT_TOKEN ?? process.env.TOKEN;
+const SUPERSEDED_FILE = 'experiments/superseded.json';
+const superseded = existsSync(SUPERSEDED_FILE) ? JSON.parse(readFileSync(SUPERSEDED_FILE, 'utf8')) : {};
 const only = args.find((a) => !a.startsWith('--') && a !== TARGET);
 
 const seqs = new Map();
@@ -27,9 +34,10 @@ if (args.includes('--examples')) {
   })));
 }
 
-let passSeq = 0, failSeq = 0;
+let passSeq = 0, failSeq = 0, skipSeq = 0;
 for (const [seq, steps] of seqs) {
   if (only && seq !== only) continue;
+  if (Object.hasOwn(superseded, seq)) { skipSeq++; console.log(`SKIP ${seq}: ${superseded[seq]}`); continue; }
   await send(TARGET, TOKEN, { path: '/__reset', method: 'POST' });
   const fails = [];
   for (const s of steps) {
@@ -42,5 +50,5 @@ for (const [seq, steps] of seqs) {
   if (fails.length) { failSeq++; console.log(`FAIL ${seq}\n${fails.join('\n')}`); }
   else passSeq++;
 }
-console.log(`\n${passSeq} sequences pass, ${failSeq} fail (target: ${TARGET})`);
+console.log(`\n${passSeq} sequences pass, ${failSeq} fail, ${skipSeq} skipped (target: ${TARGET})`);
 process.exitCode = failSeq ? 1 : 0;
