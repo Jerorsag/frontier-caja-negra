@@ -4,9 +4,9 @@ The replacement is scored by exact comparison with the original, so the main tes
 
 | Level | What it proves | How | State |
 |---|---|---|---|
-| Replay of the log | Same status and body as the original on every logged sequence | `node tools/diff.mjs` | In place: every current-version sequence passes; s03 is skipped as superseded |
-| Public examples | The 20 examples of `pruebas/ejemplos.jsonl` pass in order after a reset | `node tools/diff.mjs --examples` | In place |
-| Unit tests | Checksum, amount parser, limit, lock counter, reversals, ids | `npm --prefix service test` | In place: 79 tests |
+| Replay of the log | Same status and body as the original on every logged sequence | `node tools/diff.mjs` | In place for v2: 6 sequences pass, 0 fail, 8 skipped as superseded (s03–s08, s12, s13); s14 is the v2 incident sequence |
+| Public examples | The 20 examples of `pruebas/ejemplos.jsonl` pass in order after a reset | `node tools/diff.mjs --examples` | Superseded: recorded under v1, SKIP since the v2 incident (CAM-08); the gate is not enforced |
+| Unit tests | Checksum, amount parser, limit, lock counter, reversals, ids | `npm --prefix service test` | In place: 89 tests, all passing (`npm --prefix service test`) |
 | Error-order tests | One test per pair of checks, with both faults in one message | `npm --prefix service test` | In place |
 | Drift check | The original still answers as logged | New logged probe of an existing experiment | Manual |
 | CI | Build and replay on every push | Workflow not adapted yet | Planned |
@@ -31,13 +31,13 @@ The token sent to the target is `REPLACEMENT_TOKEN` from `.env.tools` (it falls 
 
 ### Superseded sequences
 
-Experiment 64 was recorded at 10:36, before the original changed its transfer limit, so sequence s03 no longer describes the current version. `experiments/superseded.json` maps a sequence to the reason it is superseded:
+Experiment 64 was recorded at 10:36, before the original changed its transfer limit, so sequence s03 no longer describes the current version. Since the v2 incident (FR-0153, 10/10), the sequences s04–s08, s12 and s13 were recorded under v1 and are superseded too; their v2 behavior is verified by s14 (ids 815–834). `experiments/superseded.json` maps a sequence to the reason it is superseded:
 
 ```json
 { "s03": "recorded 10:36, before the transfer-limit change detected at 10:44 (#64 vs #125); kept as evidence, not as a test" }
 ```
 
-`tools/diff.mjs` reports those sequences as `SKIP` with the reason, and does not count them as failures. The lines stay in `experimentos.jsonl` as evidence of the change. Skipping is per sequence, so the other 28 steps of s03 are not replayed either; the rules they cover are replayed by s04–s06 and by the unit tests.
+`tools/diff.mjs` reports those sequences as `SKIP` with the reason, and does not count them as failures. The lines stay in `experimentos.jsonl` as evidence of the change. Skipping is per sequence, so the other 28 steps of s03 are not replayed either; the rules they cover are replayed by s14 and by the unit tests.
 
 ## Unit tests
 
@@ -53,7 +53,7 @@ Experiment 64 was recorded at 10:36, before the original changed its transfer li
 **`service/src/protocol.test.ts`** calls `handleMessage(rawBody, store)` directly, with no HTTP server:
 
 - Amounts: 0, -5, +5, 0100, 1.5, abc and 10000000000 are E303 and leave the balance unchanged; 9999999999 is accepted.
-- Limit: inclusive at 100,000.
+- Limit: inclusive at 50,000 (v2: 50000 OK, 50001 and 100000 E506; #818, #559–560). v1 was 100,000 (#74, #75).
 - Lock: three consecutive rejected transfers (E506 or E507) lock the source; a successful transfer resets the count; a locked account still receives deposits and transfers.
 - `ANULA`: idempotent, reverses transfers on both accounts, can leave a negative balance.
 - Ids: failed operations consume none, and `ANULA` creates none.
@@ -81,7 +81,7 @@ Also in `service/src/protocol.test.ts`: one test per pair of checks, each reques
 | E303 before E401 | bad amount, unknown account | 86 |
 | E304 before E401 | same account that does not exist | 87 |
 | E303, E304, E401 before E510 | each fault on a locked source | 412–420 (s13) |
-| E510 before E506 and E507 | locked source, over the limit and over the balance | 104, 105 |
+| E510 before E506 and E507 | locked source, over the limit and over the balance | 104, 105 (v1); 587, 613, 615 (v2) |
 | E506 before E507 | over the limit with balance 0 | 108 |
 
 E100 and E102 are tested on their own: a body cannot be both. 
@@ -95,7 +95,7 @@ E100 and E102 are tested on their own: a body cannot be both.
 
 ## CI
 
-`.github/workflows/ci.yml` is still the workflow of the NestJS template: it builds `backend/` and `frontend/`, which no longer exist, and it triggers on pushes to `main` while this repo uses `master`. It does not test this project. The intended pipeline is: `npm --prefix service ci`, `npm --prefix service run build`, start the service with a test token, then `node tools/diff.mjs --examples`.
+`.github/workflows/ci.yml` runs on pushes and pull requests to `master`: `npm --prefix service ci`, `npm --prefix service test`, starts the replacement with a test token on port 3000, then runs `node tools/diff.mjs --examples`. That step exits 0 because `ejemplos` is listed in `experiments/superseded.json` (recorded under v1, fails against v2 by design, CAM-08) and is reported as SKIP. The logged sequences still run and must pass.
 
 ## Drift checks against the original
 
@@ -115,7 +115,7 @@ Each drift check costs probe budget (8,000 requests per day per token, 10 per se
 
 ## Acceptance criteria
 
-- All 20 public examples pass in order after a reset.
+- The 20 public examples are superseded (recorded under v1, SKIP in `experiments/superseded.json`); the logged sequences still pass (CAM-08).
 - `npm --prefix service test` passes.
 - All current-version logged sequences pass, locally and deployed.
 - The replacement makes zero outbound requests (verified in code review).

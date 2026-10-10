@@ -25,8 +25,8 @@ A small core-banking protocol over `POST /msg` with `{"m": "COMMAND;args;CONTROL
 - Six commands: `PING`, `ALTA`, `CONSULTA`, `DEPOSITO`, `TRANSFER`, `ANULA`.
 - A mod-97 checksum: `control = 98 − (N mod 97)`.
 - 17 error codes evaluated in a fixed order (the first failing check wins).
-- Per-token state, a fixed transfer limit of 100,000, and an account lock after three consecutive limit rejections.
-- One behavior change detected during the day (transfer limit, 10:36 → 10:44).
+- Per-token state, a fixed transfer limit (50,000 in v2; 100,000 in v1), and an account lock after three consecutive limit rejections. A locked account answers `423` with `intentos` in v2 (`409` in v1).
+- Two behavior changes detected during the day: the transfer limit (10:36 → 10:44, v1), and the v2 incident FR-0153 (10/10): locked `409` → `423` with `intentos`, `CONSULTA` `saldo` as a 2-decimal string, limit 100,000 → 50,000. The last v1 run was 15:29 local; the first changed run was 16:05 local (`tools/drift.mjs`).
 
 ## Architecture
 
@@ -84,7 +84,8 @@ Requirements: Node 20+.
 
 | Check | Result |
 |---|---|
-| Logged sequences replayed (current version) | all passing |
+| Logged sequences replayed against v2 | 6 pass, 0 fail; 8 superseded v1 sequences skipped (`node tools/diff.mjs`); incident sequence s14 passes |
+| Public examples against v2 | 5, 8, 10, 11 and 19 fail (recorded under v1), and 13, 14, 18 fail in cascade. Not modified; which version is judged is pending (CAM-08 in `docs/especificacion.md`) |
 | Hidden evaluation set | _pending_ |
 
 ## Documentation

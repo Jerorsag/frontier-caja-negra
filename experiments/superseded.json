@@ -6,5 +6,6 @@
   "s07": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
   "s08": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
   "s12": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
-  "s13": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14"
+  "s13": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
+  "ejemplos": "public examples recorded under v1 (morning); superseded by the v2 incident (FR-0153); fail against v2 by design (CAM-08); file not modified; the examples gate is not enforced"
 }

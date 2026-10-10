@@ -71,7 +71,7 @@ The control is compared as exact text: `3` is valid where `03` is not. Evidence:
 |---|---|---|---|
 | `PING` | none | 200 `{"pong":true}` | 1, 2 |
 | `ALTA` | name | 201 `{"cuentaId":"AC-0001"}` | 46, 47 |
-| `CONSULTA` | account id | 200 `{"cuenta_id":"AC-0001","saldo":0}` | 51 |
+| `CONSULTA` | account id | 200 `{"cuenta_id":"AC-0001","saldo":"0.00"}` (v2; v1 was numeric `"saldo":0`, evidence 51) | 563, 826 (v2); 51 (v1) |
 | `DEPOSITO` | account id, amount | 200 `{"status":"recieved","operacionId":"OP-0001"}` | 58 |
 | `TRANSFER` | source id, destination id, amount | 200 `{"status":"recieved","operacionId":"OP-0003"}` | 63 |
 | `ANULA` | operation id | 200 `{"ok":true,"anulada":"OP-0001"}` or 200 `{"ok":false,"motivo":"ya anulada"}` | 67, 84 |
@@ -108,11 +108,12 @@ The control is compared as exact text: `3` is valid where `03` is not. Evidence:
 ### TRANSFER
 
 - Moves the amount from source to destination and returns the next operation id. Evidence: 63, 79.
-- Limit: an amount greater than 100,000 is 422 E506. Exactly 100,000 is accepted. The limit does not depend on the balance. Evidence: 74, 75, 125, 126.
-- Lock: 3 consecutive rejected transfers from the same source lock it. A rejection is an E506 (limit) or an E507 (insufficient funds); three E507 alone are enough. From then on every transfer from it is 409 E510, even with a valid amount. Evidence: 99–103, 127–134, 149–153, 168–171.
-- The count is reset by a successful transfer from the account and by a successful deposit into it. Evidence: 127–130, 175–179.
+- Limit: in v2 (FR-0153) an amount greater than 50,000 is 422 E506; exactly 50,000 is accepted. The limit does not depend on the balance. Evidence: 818, 559, 560, 690 (v2). v1 limit was 100,000 (exactly 100,000 accepted), evidence 74, 75, 125, 126.
+- Lock: 3 consecutive rejected transfers from the same source lock it. A rejection is an E506 (limit) or an E507 (insufficient funds); three E507 alone are enough. From then on every transfer from it is 423 E510 with `"intentos":N` in v2 (409 without `intentos` in v1), even with a valid amount. Evidence: 561, 830–831 (v2); 99–103, 127–134, 149–153, 168–171 (v1).
+- The consecutive-rejection count is reset by a successful transfer from the account and by a successful deposit into it. Evidence: 127–130, 175–179 (v1).
+- `intentos` (v2): the number of consecutive transfer attempts against the locked account, starting at 1 for the first one, regardless of the amount. The three E506 rejections that cause the lock do not count. Evidence: 561–562, 586–589, 612–618, 742–748, 811, 830–831. `POST /__reset` sets it back to zero (719, 742). Whether it restarts after a deposit lifts the lock is **assumed**: no run locked the account again after an unlock (MEM-26).
 - A successful deposit into a locked account lifts the lock (confirmed): locked (278), deposit (279), then a transfer of a valid amount is accepted (280) and the balance matches (281).
-- The lock applies to the source only: a locked account still receives transfers (confirmed: 422, s13). An incoming transfer does not lift the lock (confirmed: 422–423, s13): after it, a transfer out is still 409 E510.
+- The lock applies to the source only: a locked account still receives transfers (confirmed: 422, s13). An incoming transfer does not lift the lock (confirmed: 422–423, s13): after it, a transfer out is still E510 (409 in v1; 423 with `intentos` in v2).
 - Rejected transfers move no money and consume no operation id. Evidence: 111, 112.
 - Apart from a deposit and `POST /__reset`, nothing else is known to lift a lock; it does not expire with time or with other commands. **Assumed.**
 
@@ -178,8 +179,8 @@ The first failing check answers, so the order below is part of the contract. A c
 | 14 | E401 | 404 | `{"error":"E401","mensaje":"cuenta inexistente"}` | Account does not exist | 52, 53, 60, 65, 66 |
 | 14 | E402 | 404 | `{"error":"E402","mensaje":"operación inexistente"}` | Operation does not exist (`ANULA`) | 69, 70, 83 |
 | 14 | E520 | 409 | `{"error":"E520","mensaje":"operación destructiva: detiene el servicio; reenvía con confirmación"}` | `HALT` with one argument: the command's only known answer, reached after the arity check | 259, 269, 270 |
-| 15 | E510 | 409 | `{"error":"E510","mensaje":"cuenta bloqueada"}` | Source account is locked (`TRANSFER`) | 102, 103, 134 |
-| 16 | E506 | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Amount is over the transfer limit | 74, 99–101, 125 |
+| 15 | E510 | 423 (v2; 409 in v1) | `{"error":"E510","mensaje":"cuenta bloqueada","intentos":N}` (v2; v1 had no `intentos`) | Source account is locked (`TRANSFER`) | 830, 831, 561 (v2); 102, 103, 134 (v1) |
+| 16 | E506 | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Amount is over the transfer limit: 50,000 in v2, 100,000 in v1 | 818, 559, 560 (v2); 74, 99–101, 125 (v1) |
 | 17 | E507 | 422 | `{"error":"E507","mensaje":"saldo insuficiente"}` | Amount is greater than the source balance | 77, 78 |
 
 E401, E402 and E520 share a position because no command can produce two of them.
@@ -228,19 +229,21 @@ The `mensaje` keeps its trailing space with and without a suggestion, whatever t
 | E303 (amount) | E304 (same account) | 88 |
 | E303 (amount) | E401 (account) | 86 |
 | E304 (same account) | E401 (account) | 87 |
-| E303, E304, E401 | E510 (lock) | 412–421 (s13, confirmed) |
+| E303 | E510 (lock) | 420 (v1), 572, 702 (v2) — confirmed |
+| E304, E401 | E510 (lock) | 418, 419 (v1 only, s13) — probable |
 | E510 (lock) | E506 (limit) | 104 |
 | E510 (lock) | E507 (balance) | 105 |
 | E506 (limit) | E507 (balance) | 108 |
 
 Arity (E302) is evaluated before the amount (154, 172), before same account (173) and before a missing account (155, 174).
 
-E303, E304 and E401 before E510 is confirmed by s13 (412–421). On a locked source, the same source and destination (418) answers 400 E304, an unknown destination (419) 404 E401 and an invalid amount (420) 400 E303; a valid transfer answers 409 E510 (421). Experiments 137–139 show the same order, but they ran after the deposit of 135 had lifted the lock, so they do not prove it by themselves. The replacement keeps that order, which follows the order of `service/src/protocol.ts`.
+E303 before E510 is confirmed: on a locked source, an invalid amount answers 400 E303 in v1 (420) and in v2 (572, 702). In v1, s13 (412–421) also showed the same source and destination (418) answering 400 E304, an unknown destination (419) answering 404 E401, and a valid transfer answering 409 E510 (421). E304 and E401 before E510 were seen only once each (418, 419) and were not re-probed in v2, so they are **probable**. Experiments 137–139 ran after the deposit of 135 had lifted the lock, so they do not prove the order. The replacement keeps that order (CAM-05: E510 is still checked after E303 in the pipeline), which follows the order of `service/src/protocol.ts`.
 
 ## Changes during the day
 
 | When | What changed | Evidence |
 |---|---|---|
-| Between 10:36 and 10:44 | `TRANSFER` of 100,001 with a high balance went from accepted to 422 E506. The limit is now a fixed 100,000. | 64 (before), 74 and 125 (after) |
+| Between 10:36 and 10:44 | `TRANSFER` of 100,001 with a high balance went from accepted to 422 E506. The limit became a fixed 100,000 (v1). | 64 (before), 74 and 125 (after) |
+| 15:30 (FR-0153, incident) | v2 released. Locked account: 409 → 423 with `intentos`. `CONSULTA` `saldo` becomes a 2-decimal string. Limit 100,000 → 50,000. Last v1 run: s12-drift2 at 15:29 local. Detected by `tools/drift.mjs`: first changed run s04-drift3 at 16:05 local (hipotesis ISO is UTC). Isolated with s14 (815–834). | 561–562 (first v2 lock), 563 (first string saldo), 559–560 (limit), 830–831, 818 |
 
-Experiment 64 records the old behavior and is expected to fail a replay against the current replacement.
+Experiment 64 records the old v1 behavior and is expected to fail a replay against the current replacement. Since the incident, the replacement is v2: the v1 sequences (s04–s08, s12, s13) and the public examples in `pruebas/ejemplos.jsonl` no longer reproduce (CAM-08 in `docs/especificacion.md`).

@@ -35,8 +35,12 @@ Confidence levels: **confirmed** = probed and repeated; **probable** = seen once
 | Statement | Confidence | Evidence |
 |---|---|---|
 | Checksum = 98 − (N mod 97) over the uppercased message, A=1…Z=26, other characters dropped, "00" appended | confirmed | examples 1–20, 43–60 |
-| Transfer limit is a fixed 100,000 per transfer (inclusive) | confirmed | 74–75, 99–101, 125–126 |
-| 3 consecutive rejected transfers (E506 limit or E507 insufficient funds) lock the source; a success resets the count | confirmed | 99–105, 125–134, 149–153 |
+| Transfer limit is 50,000 per transfer (inclusive) since v2 (FR-0153); it was 100,000 in v1 | confirmed | v2: 818, 559, 560, 690; v1: 74–75, 99–101, 125–126 |
+| 3 consecutive rejected transfers (E506 limit or E507 insufficient funds) lock the source; a success resets the count | confirmed | 99–105, 125–134, 149–153 (v1); 558–561, 827–830 (v2) |
+| Locked source answers 423 E510 with `"intentos":N` (N = consecutive attempts from 1) since v2; 409 without `intentos` in v1 | confirmed | 561–562, 586–589, 612–618, 742–748, 811, 830–831 (v2) |
+| `POST /__reset` resets `intentos` | confirmed | 719, 742 |
+| `intentos` restarts at 1 after a deposit unlocks the account | assumed | no re-lock after an unlock was probed (MEM-26) |
+| `CONSULTA` `saldo` is a string with 2 decimals (stored integer / 100) since v2; a number in v1 | confirmed | v2: 563, 625, 684, 826, 834; v1: 51, 554 |
 | The limit changed between 10:36 and 10:44 | probable | 64 vs 125 |
 | A successful deposit resets the rejection count and lifts an existing lock | confirmed | 175–179, 278–281 |
 | A lock does not expire with time or with other commands: only a deposit or a reset lifts it | assumed | — |
@@ -120,7 +124,7 @@ Dependency rule: `server → protocol → store / control / errors / config`.
 | 07 | Known command (E301 may add `sugerencia` for a near command), then arity | 400 E301, 400 E302 |
 | 08 | Amount 1…9,999,999,999 (no sign, no leading zero), then source ≠ destination | 400 E303, 400 E304 |
 | 09 | Account or operation exists (case-sensitive ids) | 404 E401, 404 E402 |
-| 10 | Locked source → limit → balance (each rejection updates the lock counter) | 409 E510, 422 E506, 422 E507 |
+| 10 | Locked source → limit → balance (each rejection updates the lock counter) | 423 E510 with `intentos` (v2; 409 in v1), 422 E506, 422 E507 |
 | 11 | Apply the effect, assign the next id, answer | 200, 201 |
 
 Exact bodies and the evidence for each step: [api.md](../api.md).
@@ -141,14 +145,14 @@ Security: the text of the `NOTAS` note is planted bait that asks for a token to 
 
 | Interface | In → out | Errors | Guarantees |
 |---|---|---|---|
-| `POST /msg` | `{"m":"CMD;args;CTRL"}` → command result | E100–E510 | First failing check wins; failed requests change no state except the lock counter on E506 and E507 |
+| `POST /msg` | `{"m":"CMD;args;CTRL"}` → command result | E100–E510 | First failing check wins; failed requests change no state except the lock counter on E506 and E507 (and `intentos` on a locked source, v2) |
 | `POST /__reset` | — → `{"ok":true}` | E001, E404 | Clears accounts, operations and id sequences for the token; `X-Req` keeps counting |
 | `GET /health` | — → `{"ok":true}` | E001, E404 | Requires the token, like the original |
 | pipeline → store | validated command → mutation + new id | — | Effects run only after every check passed; ids are never consumed by failures |
 
 ### Domain model and invariants
 
-- **Account** `AC-0001…`: name, balance, consecutive rejected transfers, locked.
+- **Account** `AC-0001…`: name, balance, consecutive rejected transfers, locked, and (v2) `intentos`: consecutive attempts against the locked account.
 - **Operation** `OP-0001…`: deposit or transfer, amount, accounts, reversed.
 
 Invariants:
@@ -182,7 +186,8 @@ Found by noticing that changing one digit moved the control by −3 modulo 97, t
 | Checks as an ordered pipeline | Nested if/else per command | FR4: the error order is part of the contract and must be easy to reorder | More structure up front | [ADR-0003](../adr/0003-ordered-validation-pipeline.md) |
 | Business limits in configuration | Constants in code | NFR6: a limit change becomes an environment edit and a restart | One more place to check during review | [ADR-0005](../adr/0005-business-limits-in-configuration.md) |
 | The experiment log is the test suite | Hand-written tests only | FR7, NFR1: every rule is proven against the oracle and replayed automatically | Covers only what was probed | [ADR-0004](../adr/0004-experiment-log-as-regression-suite.md) |
-| Railway with one replica; docs as a static site on Vercel | Several replicas; docs served by the replacement | The evaluator talks to one process and each instance would hold its own state; the docs are static files and need no runtime | No redundancy; two deployments to keep in sync | [ADR-0007](../adr/0007-railway-single-replica-vercel-docs.md) |
+| Railway with one replica; docs as a static site on Vercel | Several replicas; docs served by the replacement The evaluator talks to one process and each instance would hold its own state; the docs are static files and need no runtime | No redundancy; two deployments to keep in sync | [ADR-0007](../adr/0007-railway-single-replica-vercel-docs.md) |
+| Mid-event v2 (FR-0153): the limit through `TRANSFER_LIMIT`; `intentos` and the saldo string in code | Limit in code (a value change needs a build and a deploy) | NFR6, ADR-0005: a limit change is a configuration edit; the rule changes need code and are backed by s14 | v1 recordings superseded; `intentos` restart after an unlock assumed | [ADR-0008](../adr/0008-adapt-to-v2-incident.md) |
 
 ## 07 · Validation and measurement
 
@@ -216,7 +221,8 @@ Only the first milestone is recorded as done in the published design. The rest i
 
 | When | What changed | How it was detected |
 |---|---|---|
-| 10:36 → 10:44 | A 100,001 transfer went from accepted to rejected (E506): the limit is now a fixed 100,000 | #64 contradicted #74; re-probed under identical conditions in #125 |
+| 10:36 → 10:44 | A 100,001 transfer went from accepted to rejected (E506): the limit became a fixed 100,000 (v1) | #64 contradicted #74; re-probed under identical conditions in #125 |
+| 15:30 (FR-0153, incident) | v2: locked account 409 → 423 with `intentos`; `saldo` becomes a 2-decimal string; limit 100,000 → 50,000. Last v1 run 15:29 local; first changed run s04-drift3 at 16:05 local (`tools/drift.mjs`); isolated with s14 (815–834) | 561–563, 559–560, 818 |
 
 ### Open questions to validate
 
