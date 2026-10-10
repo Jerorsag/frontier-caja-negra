@@ -1,49 +1,187 @@
 # API reference
 
-Base URL: `http://localhost:3000` (from the web app: `/api`).
+The contract of the original service as discovered by experiment, and as implemented in `service/src`. Numbers in **Evidence** are `id` values in [experimentos.jsonl](../experimentos.jsonl); "ex. N" is line N of `pruebas/ejemplos.jsonl`. Anything without evidence is marked **assumed**.
+
+All response bodies are JSON. Bodies below are exact: field names, accents, the typo `recieved` and the trailing space in E301 are part of the contract.
+
+## Routes
+
+| Method and path | Success | Notes | Evidence |
+|---|---|---|---|
+| `POST /msg` | Depends on the command | The only route that carries messages | 1 |
+| `GET /health` | 200 `{"ok":true}` | Requires the token | 16, 17 |
+| `POST /__reset` | 200 `{"ok":true}` | Clears the token's accounts, operations and id sequences | 40, 71 |
+| Anything else | 404 `{"error":"E404","mensaje":"ruta desconocida"}` | Including other methods on known paths; there is no 405 | 13–15, 18, 35–38 |
+
+- Paths are exact and case-sensitive: `/msg/` and `/MSG` are 404. Evidence: 36, 37.
+- The route is checked before the token: an unknown route without a token is 404, not 401. Evidence: 19.
+- Query strings are ignored when matching the route. **Assumed.**
+
+## Authentication
+
+Every known route requires `Authorization: Bearer <token>`. A missing token and a wrong token get the same answer. Evidence: 11, 12, 17, 39.
+
+```
+401 {"error":"E001","mensaje":"no autorizado"}
+```
+
+Authentication is checked before the body: an invalid body without a token is 401. Evidence: 20.
+
+State is separate per token. The replacement accepts only the team token (`TEAM_TOKEN`).
+
+## The `X-Req` header
+
+Responses to authenticated `POST /msg` requests carry `X-Req`, a per-token counter. `POST /__reset` does not restart it, and 401 and 404 responses neither carry it nor increment it. Evidence: 21, 41. Headers are not compared by the evaluator.
+
+## Message format
+
+```
+POST /msg
+{"m": "<COMMAND>;<arg1>;…;<control>"}
+```
+
+- The body must be JSON, and an object with a string `m`. Extra fields are ignored. Evidence: 28.
+- `Content-Type` does not matter. Evidence: 34.
+- `m` is split on `;`. The first segment is the command, the last is the control (checksum), the rest are arguments.
+- `m` is never trimmed: `" PING"` is not `PING`, and `"64 "` is a malformed control. Evidence: 26.
+- The command is case-insensitive. Evidence: 5, 27, ex. 11.
+- Account and operation ids are case-sensitive. Evidence: 52, 83.
+
+## Checksum
+
+```
+control = 98 − (N mod 97)
+```
+
+N is built from the message without its control segment (and without the last `;`):
+
+1. Uppercase it.
+2. Replace each letter with its position: A=1 … Z=26.
+3. Keep digits.
+4. Drop every other character (including `;`, spaces and accented letters). Evidence: 49.
+5. Append `00`.
+
+The control is compared as exact text: `3` is valid where `03` is not. Evidence: 45. Example: `ALTA;Lucia` → `ALTA;Lucia;82` (ex. 3). `PING` does not validate its control at all. Evidence: 3, 42.
+
+`node tools/control.mjs "ALTA;Lucia"` prints the signed message.
+
+## Commands
+
+| Command | Arguments | Success | Evidence |
+|---|---|---|---|
+| `PING` | none | 200 `{"pong":true}` | 1, 2 |
+| `ALTA` | name | 201 `{"cuentaId":"AC-0001"}` | 46, 47 |
+| `CONSULTA` | account id | 200 `{"cuenta_id":"AC-0001","saldo":0}` | 51 |
+| `DEPOSITO` | account id, amount | 200 `{"status":"recieved","operacionId":"OP-0001"}` | 58 |
+| `TRANSFER` | source id, destination id, amount | 200 `{"status":"recieved","operacionId":"OP-0003"}` | 63 |
+| `ANULA` | operation id | 200 `{"ok":true,"anulada":"OP-0001"}` or 200 `{"ok":false,"motivo":"ya anulada"}` | 67, 84 |
+
+### PING
+
+- `PING;<anything>`: the control segment must exist and be non-empty, but neither its format nor its value is checked. Evidence: 3, 42.
+- Any argument is 400 E302. Evidence: 25.
+- An empty control (`PING;`) is 400 E104. Evidence: 22.
+
+### ALTA
+
+- Creates an account with balance 0 and returns the next id: `AC-` plus a 4-digit sequence per token. Evidence: 46, 51.
+- Names are not unique: a repeated name creates another account. Evidence: 47.
+- Names with accents, digits, spaces or 120 characters are accepted. Evidence: 49, 50, 120, 121.
+- Note the field name `cuentaId` (camelCase), different from `cuenta_id` in `CONSULTA`.
+
+### CONSULTA
+
+- Returns the id and the balance as a number. The balance can be negative. Evidence: 51, 141.
+- Works on a locked account and does not show the lock. Evidence: 106.
+
+### DEPOSITO
+
+- Adds the amount to the balance and returns the next operation id: `OP-` plus a 4-digit sequence per token. Evidence: 58, 61.
+- There is no deposit limit other than the amount format. Evidence: 58, 142.
+- A locked account accepts deposits. Evidence: 135.
+- A repeated deposit applies twice: there is no idempotency key.
+
+### TRANSFER
+
+- Moves the amount from source to destination and returns the next operation id. Evidence: 63, 79.
+- Limit: an amount greater than 100,000 is 422 E506. Exactly 100,000 is accepted. The limit does not depend on the balance. Evidence: 74, 75, 125, 126.
+- Lock: 3 consecutive E506 on the same source lock it. From then on every transfer from it is 409 E510, even with a valid amount. A successful transfer resets the count. Evidence: 99–103, 127–134.
+- The lock applies to the source only: a locked account still receives transfers. Evidence: 136.
+- Rejected transfers move no money and consume no operation id. Evidence: 111, 112.
+- An E507 does not change the lock counter. **Assumed.**
+- A lock does not expire within a session. **Assumed.**
+
+### ANULA
+
+- Reverses a deposit (subtracts it) or a transfer (returns it to the source and subtracts it from the destination). Evidence: 67, 68, 80–82.
+- The second reversal of the same operation answers 200 `{"ok":false,"motivo":"ya anulada"}`. Evidence: 84, ex. 14.
+- It does not create an operation id. Evidence: 85.
+- It does not check balances: a reversal can leave an account negative. Evidence: 141.
+- It works on operations of a locked account. Evidence: 114, 140.
+
+### Amounts
+
+A valid amount is a positive integer from 1 to 9,999,999,999 written with digits only: no sign, no decimals, no leading zero. Anything else is 400 E303. Evidence: 54–57, 89, 90, 142, 143.
+
+### Ids and failed requests
+
+- Ids are sequential per token and restart after `POST /__reset`. Evidence: 71.
+- Failed requests consume no id and change no state, except the lock counter on E506. Evidence: 59, 92, 111.
+- Behavior after `AC-9999` or `OP-9999` is not probed; the replacement keeps counting (`AC-10000`). **Assumed.**
 
 ## Errors
-Every error uses the same shape:
 
-```json
-{
-  "statusCode": 404,
-  "error": "NOT_FOUND",
-  "message": "Item not found",
-  "path": "/items/123",
-  "timestamp": "2026-10-10T15:00:00.000Z"
-}
-```
+Every error body is `{"error":"<code>","mensaje":"<text>"}`. There are 17 codes.
 
-Validation errors (`400`) return `message` as an array of strings. Unknown fields in a payload are rejected with `400`.
+The first failing check answers, so the order below is part of the contract. A check is only reached when every check above it passed.
 
-## Health
+| Order | Code | Status | Exact body | When | Evidence |
+|---|---|---|---|---|---|
+| 1 | E404 | 404 | `{"error":"E404","mensaje":"ruta desconocida"}` | Method and path are not one of the three routes | 13–15, 18, 35–38 |
+| 2 | E001 | 401 | `{"error":"E001","mensaje":"no autorizado"}` | Token missing or wrong | 11, 12, 17, 39 |
+| 3 | E100 | 400 | `{"error":"E100","mensaje":"json inválido"}` | Body is not JSON, or is empty | 10, 32 |
+| 4 | E102 | 400 | `{"error":"E102","mensaje":"falta m"}` | Body is not an object, has no `m`, or `m` is not a string | 7, 8, 29–31, 33 |
+| 5 | E103 | 400 | `{"error":"E103","mensaje":"falta control"}` | `m` has no `;` (including empty `m`) | 4, 9 |
+| 6 | E104 | 400 | `{"error":"E104","mensaje":"segmento vacío"}` | Any segment is empty | 22, 24, 48 |
+| 7 | E302 | 400 | `{"error":"E302","mensaje":"aridad inválida"}` | `PING` with arguments (PING stops here: no checksum) | 25 |
+| 8 | E201 | 400 | `{"error":"E201","mensaje":"control mal formado"}` | Control is not digits only | 23, 26, ex. 17 |
+| 9 | E202 | 400 | `{"error":"E202","mensaje":"control inválido"}` | Control is not the expected text | 6, 43, 45 |
+| 10 | E301 | 400 | `{"error":"E301","mensaje":"comando desconocido "}` | Unknown command. The message ends with a space | 44, ex. 12 |
+| 11 | E302 | 400 | `{"error":"E302","mensaje":"aridad inválida"}` | Wrong number of arguments | 93, 94, ex. 20 |
+| 12 | E303 | 400 | `{"error":"E303","mensaje":"monto inválido"}` | Amount is not a valid amount (`DEPOSITO`, `TRANSFER`) | 54–57, 89–91, 143 |
+| 13 | E304 | 400 | `{"error":"E304","mensaje":"origen y destino iguales"}` | `TRANSFER` with the same source and destination | 62 |
+| 14 | E401 | 404 | `{"error":"E401","mensaje":"cuenta inexistente"}` | Account does not exist | 52, 53, 60, 65, 66 |
+| 14 | E402 | 404 | `{"error":"E402","mensaje":"operación inexistente"}` | Operation does not exist (`ANULA`) | 69, 70, 83 |
+| 15 | E510 | 409 | `{"error":"E510","mensaje":"cuenta bloqueada"}` | Source account is locked (`TRANSFER`) | 102, 103, 134 |
+| 16 | E506 | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Amount is over the transfer limit | 74, 99–101, 125 |
+| 17 | E507 | 422 | `{"error":"E507","mensaje":"saldo insuficiente"}` | Amount is greater than the source balance | 77, 78 |
 
-### GET /health
-Checks the API and the database.
+E401 and E402 share a position because no command can produce both.
 
-**200**
-```json
-{ "status": "ok", "database": "up", "timestamp": "2026-10-10T15:00:00.000Z" }
-```
-`status` is `degraded` and `database` is `down` when the database does not answer.
+### Order pairs and the experiment that pins each one
 
-<!--
-Template for each endpoint:
-
-### METHOD /path
-What it does, in one line.
-
-**Request**
-```json
-{ }
-```
-
-**Responses**
-| Status | When | Body |
+| First | Before | Evidence |
 |---|---|---|
-| 201 | Created | … |
-| 400 | Invalid payload | error shape |
-| 404 | … | error shape |
-| 409 | … | error shape |
--->
+| E404 (route) | E001 (auth) | 19 |
+| E001 (auth) | E100 (JSON) | 20 |
+| E103 (no `;`) | E104 (empty segment) | 9 |
+| E104 (empty segment) | E201 / E202 (control) | 24 |
+| E202 (control) | E301 (command) | 6 |
+| E202 (control) | E302 (arity) | 43 |
+| E303 (amount) | E304 (same account) | 88 |
+| E303 (amount) | E401 (account) | 86 |
+| E304 (same account) | E401 (account) | 87 |
+| E303, E304, E401 | E510 (lock) | 139, 137, 138 |
+| E510 (lock) | E506 (limit) | 104 |
+| E510 (lock) | E507 (balance) | 105 |
+| E506 (limit) | E507 (balance) | 108 |
+
+Not pinned by a two-fault experiment, so **assumed** (the replacement follows the order of `service/src/protocol.ts`): E302 (arity) before E303, E304 and E401. Experiments 93 and 94 show E302 on its own, never together with a bad amount or a missing account.
+
+## Changes during the day
+
+| When | What changed | Evidence |
+|---|---|---|
+| Between 10:36 and 10:44 | `TRANSFER` of 100,001 with a high balance went from accepted to 422 E506. The limit is now a fixed 100,000. | 64 (before), 74 and 125 (after) |
+
+Experiment 64 records the old behavior and is expected to fail a replay against the current replacement.
