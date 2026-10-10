@@ -1,6 +1,6 @@
 # Experiment log (readable view)
 
-Generated from `experimentos.jsonl` — 145 requests in 6 sequences. Each sequence starts after `POST /__reset`.
+Generated from `experimentos.jsonl` — 164 requests in 7 sequences. Each sequence starts after `POST /__reset`.
 
 ## s01
 
@@ -176,3 +176,27 @@ Generated from `experimentos.jsonl` — 145 requests in 6 sequences. Each sequen
 | 143 | Monto 11 dígitos 10000000000 | `{"m":"DEPOSITO;AC-0002;10000000000;48"}` | 400 | `{"error":"E303","mensaje":"monto inválido"}` | Monto 10000000000 (11 dígitos) → E303: máximo 9999999999 |
 | 144 | Monto 11 dígitos 99999999999 | `{"m":"DEPOSITO;AC-0002;99999999999;86"}` | 400 | `{"error":"E303","mensaje":"monto inválido"}` | Monto de 11 dígitos → E303 |
 | 145 | Monto 12 dígitos 999999999999 | `{"m":"DEPOSITO;AC-0002;999999999999;48"}` | 400 | `{"error":"E303","mensaje":"monto inválido"}` | Monto de 12 dígitos → E303 |
+
+## s07
+
+| id | Hypothesis | Request | Status | Response | Conclusion |
+|---|---|---|---|---|---|
+| 146 | Setup: cuenta A | `{"m":"ALTA;A;62"}` | 201 | `{"cuentaId":"AC-0001"}` | Setup |
+| 147 | Setup: cuenta B | `{"m":"ALTA;B;59"}` | 201 | `{"cuentaId":"AC-0002"}` | Setup |
+| 148 | Setup: saldo 50000 en A | `{"m":"DEPOSITO;AC-0001;50000;39"}` | 200 | `{"status":"recieved","operacionId":"OP-0001"}` | Setup: saldo 50000 en AC-0001 |
+| 149 | Contador de bloqueo: E506 #1 | `{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}` | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Rechazo consecutivo 1 (E506) |
+| 150 | Contador de bloqueo: E506 #2 | `{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}` | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Rechazo consecutivo 2 (E506) |
+| 151 | ¿Un E507 (saldo insuficiente) reinicia el contador de E506? | `{"m":"TRANSFER;AC-0001;AC-0002;60000;32"}` | 422 | `{"error":"E507","mensaje":"saldo insuficiente"}` | Monto dentro del límite pero mayor al saldo → 422 E507; es el tercer rechazo consecutivo |
+| 152 | E506 tras el E507: si el E507 no reinicia, este es el 3.º consecutivo | `{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}` | 409 | `{"error":"E510","mensaje":"cuenta bloqueada"}` | Tras E506, E506, E507 → 409 E510: el E507 también cuenta para el bloqueo; el contador es de transferencias rechazadas consecutivas (E506 o E507) |
+| 153 | Si sale E510: el E507 no reinicia el contador; si sale OK: sí lo reinicia | `{"m":"TRANSFER;AC-0001;AC-0002;10;13"}` | 409 | `{"error":"E510","mensaje":"cuenta bloqueada"}` | Bloqueada aun con monto válido (10): confirma que el E507 de #151 fue el tercer rechazo y no reinició el contador |
+| 154 | Aridad vs monto: DEPOSITO con argumento extra y monto inválido → ¿E302 o E303? | `{"m":"DEPOSITO;AC-0001;abc;x;62"}` | 400 | `{"error":"E302","mensaje":"aridad inválida"}` | Aridad inválida + monto inválido → 400 E302: la aridad (E302) se evalúa antes que el monto (E303) |
+| 155 | Aridad vs cuenta inexistente: CONSULTA con argumento extra sobre cuenta inexistente | `{"m":"CONSULTA;AC-0099;x;56"}` | 400 | `{"error":"E302","mensaje":"aridad inválida"}` | Aridad inválida + cuenta inexistente → 400 E302: la aridad (E302) se evalúa antes que la cuenta (E401) |
+| 156 | Segmento vacío en medio del mensaje | `{"m":"ALTA;;Ana;50"}` | 400 | `{"error":"E104","mensaje":"segmento vacío"}` | Segmento vacío en medio del mensaje → 400 E104 'segmento vacío', antes que el control y la aridad |
+| 157 | Nombre con solo espacios (segmento no vacío) | `{"m":"ALTA;   ;85"}` | 201 | `{"cuentaId":"AC-0003"}` | Nombre de solo espacios se acepta (AC-0003): un segmento con espacios no es vacío; no se recorta |
+| 158 | Nombre con salto de línea | `{"m":"ALTA;Ana\nMaria;44"}` | 201 | `{"cuentaId":"AC-0004"}` | Nombre con salto de línea se acepta (AC-0004); el salto de línea se ignora en el cálculo del control |
+| 159 | Claves JSON duplicadas: ¿gana la primera o la última m? | `{"m":"PING;1","m":123}` | 400 | `{"error":"E102","mensaje":"falta m"}` | Claves JSON duplicadas: gana la última m (123, no string) → 400 E102 'falta m' |
+| 160 | Query string en /msg: ¿se ignora o es ruta desconocida? | /msg?x=1 `{"m":"PING;1"}` | 200 | `{"pong":true}` | El query string se ignora en /msg: /msg?x=1 responde como /msg e incrementa X-Req |
+| 161 | Query string en /health | GET /health?x=1 `null` | 200 | `{"ok":true}` | El query string se ignora en /health: /health?x=1 → 200 {"ok":true} |
+| 162 | HEAD /health | HEAD /health `null` | 404 | `` | HEAD /health → 404 con cuerpo vacío: HEAD no es un método válido (no hay cuerpo por ser HEAD) |
+| 163 | OPTIONS /msg (preflight CORS) | OPTIONS `null` | 404 | `{"error":"E404","mensaje":"ruta desconocida"}` | OPTIONS /msg → 404 E404: no hay soporte de CORS/preflight |
+| 164 | Comando vacío con control | `{"m":";1"}` | 400 | `{"error":"E104","mensaje":"segmento vacío"}` | Comando vacío (';1') → 400 E104 'segmento vacío' |

@@ -3,7 +3,7 @@
 import { control } from './control.js';
 import { config } from './config.js';
 import { E, type Reply } from './errors.js';
-import type { Store } from './store.js';
+import type { Account, Store } from './store.js';
 
 const ARITY: Record<string, number> = { ALTA: 1, CONSULTA: 1, DEPOSITO: 2, TRANSFER: 3, ANULA: 1 };
 
@@ -76,7 +76,7 @@ function parseAmount(raw: string): number | null {
 
 function alta(store: Store, name: string): Reply {
   const id = store.nextAccountId();
-  store.accounts.set(id, { id, name, balance: 0, consecutiveLimitFailures: 0, locked: false });
+  store.accounts.set(id, { id, name, balance: 0, consecutiveRejections: 0, locked: false });
   return { status: 201, body: { cuentaId: id } };
 }
 
@@ -106,17 +106,25 @@ function transfer(store: Store, fromId: string, toId: string, rawAmount: string)
   if (!from || !to) return E.unknownAccount;
   if (from.locked) return E.accountLocked; // E510 before E506 / E507
   if (amount > config.transferLimit) {
-    from.consecutiveLimitFailures += 1;
-    if (from.consecutiveLimitFailures >= config.lockAfter) from.locked = true;
+    registerRejection(from);
     return E.limitExceeded; // E506 before E507
   }
-  if (amount > from.balance) return E.insufficientFunds; // assumed: does not touch the E506 counter
+  if (amount > from.balance) {
+    registerRejection(from); // exp. 151-152: insufficient funds also counts toward the lock
+    return E.insufficientFunds;
+  }
   from.balance -= amount;
   to.balance += amount;
-  from.consecutiveLimitFailures = 0; // a successful transfer resets the counter
+  from.consecutiveRejections = 0; // a successful transfer resets the counter
   const opId = store.nextOperationId();
   store.operations.set(opId, { id: opId, kind: 'TRANSFER', from: fromId, to: toId, amount, reversed: false });
   return received(opId);
+}
+
+/** Rejected transfers (limit or funds) count toward the lock; a successful transfer resets the count. */
+function registerRejection(account: Account): void {
+  account.consecutiveRejections += 1;
+  if (account.consecutiveRejections >= config.lockAfter) account.locked = true;
 }
 
 function anula(store: Store, opId: string): Reply {

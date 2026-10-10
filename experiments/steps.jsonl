@@ -143,3 +143,22 @@
 {"id":143,"seq":"s06","step":{"hipotesis":"Monto 11 dígitos 10000000000","request":{"m":"DEPOSITO;AC-0002;10000000000;48"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
 {"id":144,"seq":"s06","step":{"hipotesis":"Monto 11 dígitos 99999999999","request":{"m":"DEPOSITO;AC-0002;99999999999;86"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
 {"id":145,"seq":"s06","step":{"hipotesis":"Monto 12 dígitos 999999999999","request":{"m":"DEPOSITO;AC-0002;999999999999;48"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":146,"seq":"s07","step":{"hipotesis":"Setup: cuenta A","request":{"m":"ALTA;A;62"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":147,"seq":"s07","step":{"hipotesis":"Setup: cuenta B","request":{"m":"ALTA;B;59"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":148,"seq":"s07","step":{"hipotesis":"Setup: saldo 50000 en A","request":{"m":"DEPOSITO;AC-0001;50000;39"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":149,"seq":"s07","step":{"hipotesis":"Contador de bloqueo: E506 #1","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":150,"seq":"s07","step":{"hipotesis":"Contador de bloqueo: E506 #2","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":151,"seq":"s07","step":{"hipotesis":"¿Un E507 (saldo insuficiente) reinicia el contador de E506?","request":{"m":"TRANSFER;AC-0001;AC-0002;60000;32"}},"status":422,"rawText":"{\"error\":\"E507\",\"mensaje\":\"saldo insuficiente\"}"}
+{"id":152,"seq":"s07","step":{"hipotesis":"E506 tras el E507: si el E507 no reinicia, este es el 3.º consecutivo","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":153,"seq":"s07","step":{"hipotesis":"Si sale E510: el E507 no reinicia el contador; si sale OK: sí lo reinicia","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":154,"seq":"s07","step":{"hipotesis":"Aridad vs monto: DEPOSITO con argumento extra y monto inválido → ¿E302 o E303?","request":{"m":"DEPOSITO;AC-0001;abc;x;62"}},"status":400,"rawText":"{\"error\":\"E302\",\"mensaje\":\"aridad inválida\"}"}
+{"id":155,"seq":"s07","step":{"hipotesis":"Aridad vs cuenta inexistente: CONSULTA con argumento extra sobre cuenta inexistente","request":{"m":"CONSULTA;AC-0099;x;56"}},"status":400,"rawText":"{\"error\":\"E302\",\"mensaje\":\"aridad inválida\"}"}
+{"id":156,"seq":"s07","step":{"hipotesis":"Segmento vacío en medio del mensaje","request":{"m":"ALTA;;Ana;50"}},"status":400,"rawText":"{\"error\":\"E104\",\"mensaje\":\"segmento vacío\"}"}
+{"id":157,"seq":"s07","step":{"hipotesis":"Nombre con solo espacios (segmento no vacío)","request":{"m":"ALTA;   ;85"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0003\"}"}
+{"id":158,"seq":"s07","step":{"hipotesis":"Nombre con salto de línea","request":{"m":"ALTA;Ana\nMaria;44"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0004\"}"}
+{"id":159,"seq":"s07","step":{"hipotesis":"Claves JSON duplicadas: ¿gana la primera o la última m?","raw":"{\"m\":\"PING;1\",\"m\":123}"},"status":400,"rawText":"{\"error\":\"E102\",\"mensaje\":\"falta m\"}"}
+{"id":160,"seq":"s07","step":{"hipotesis":"Query string en /msg: ¿se ignora o es ruta desconocida?","path":"/msg?x=1","request":{"m":"PING;1"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":161,"seq":"s07","step":{"hipotesis":"Query string en /health","path":"/health?x=1","method":"GET"},"status":200,"rawText":"{\"ok\":true}"}
+{"id":162,"seq":"s07","step":{"hipotesis":"HEAD /health","path":"/health","method":"HEAD"},"status":404,"rawText":""}
+{"id":163,"seq":"s07","step":{"hipotesis":"OPTIONS /msg (preflight CORS)","path":"/msg","method":"OPTIONS"},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":164,"seq":"s07","step":{"hipotesis":"Comando vacío con control","request":{"m":";1"}},"status":400,"rawText":"{\"error\":\"E104\",\"mensaje\":\"segmento vacío\"}"}

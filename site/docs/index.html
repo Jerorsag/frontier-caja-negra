@@ -298,11 +298,10 @@ td.mono{white-space:nowrap}
         <tbody>
           <tr><td><span lang="en">Checksum = 98 − (N mod 97) over the uppercased message, A=1…Z=26, other characters dropped, "00" appended</span><span lang="es">Checksum = 98 − (N mod 97) sobre el mensaje en mayúsculas, A=1…Z=26, otros caracteres eliminados, "00" al final</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">ex. 1–20, 43–60</td></tr>
           <tr><td><span lang="en">Transfer limit is a fixed 100,000 per transfer (inclusive)</span><span lang="es">El límite es fijo: 100.000 por transferencia (inclusivo)</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">74–75, 99–101, 125–126</td></tr>
-          <tr><td><span lang="en">3 consecutive limit rejections lock the source; a success resets the count</span><span lang="es">3 rechazos consecutivos por límite bloquean el origen; un éxito reinicia la cuenta</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">99–105, 125–134</td></tr>
+          <tr><td><span lang="en">3 consecutive rejected transfers (E506 limit or E507 insufficient funds) lock the source; a success resets the count</span><span lang="es">3 transferencias rechazadas consecutivas (E506 por límite o E507 por saldo insuficiente) bloquean el origen; un éxito reinicia la cuenta</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">99–105, 125–134, 149–153</td></tr>
           <tr><td><span lang="en">The limit changed between 10:36 and 10:44</span><span lang="es">El límite cambió entre las 10:36 y las 10:44</span></td><td><span class="chip s4">probable</span></td><td class="mono">64 vs 125</td></tr>
-          <tr><td><span lang="en">An E507 (insufficient funds) does not change the lock counter</span><span lang="es">Un E507 (saldo insuficiente) no cambia el contador de bloqueo</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
           <tr><td><span lang="en">A lock never expires within a session</span><span lang="es">Un bloqueo no expira dentro de una sesión</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
-          <tr><td><span lang="en">Query strings are ignored when matching routes</span><span lang="es">Los query strings se ignoran al comparar rutas</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
+          <tr><td><span lang="en">Query strings are ignored when matching routes</span><span lang="es">Los query strings se ignoran al comparar rutas</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">160–161</td></tr>
         </tbody>
       </table>
     </div>
@@ -439,7 +438,7 @@ td.mono{white-space:nowrap}
       <li><span class="n">07</span><span lang="en">Known command, then arity</span><span lang="es">Comando conocido, luego aridad</span><span class="codes"><span class="chip s4">400 E301</span><span class="chip s4">400 E302</span></span></li>
       <li><span class="n">08</span><span lang="en">Amount 1…9,999,999,999 (no sign, no leading zero), then source ≠ destination</span><span lang="es">Monto 1…9.999.999.999 (sin signo ni cero inicial), luego origen ≠ destino</span><span class="codes"><span class="chip s4">400 E303</span><span class="chip s4">400 E304</span></span></li>
       <li><span class="n">09</span><span lang="en">Account / operation exists (case-sensitive ids)</span><span lang="es">La cuenta / operación existe (ids sensibles a mayúsculas)</span><span class="codes"><span class="chip s4">404 E401</span><span class="chip s4">404 E402</span></span></li>
-      <li><span class="n">10</span><span lang="en">Locked source → limit (updates the lock counter) → balance</span><span lang="es">Origen bloqueado → límite (actualiza el contador) → saldo</span><span class="codes"><span class="chip s5">409 E510</span><span class="chip s5">422 E506</span><span class="chip s5">422 E507</span></span></li>
+      <li><span class="n">10</span><span lang="en">Locked source → limit → balance (each rejection updates the lock counter)</span><span lang="es">Origen bloqueado → límite → saldo (cada rechazo actualiza el contador de bloqueo)</span><span class="codes"><span class="chip s5">409 E510</span><span class="chip s5">422 E506</span><span class="chip s5">422 E507</span></span></li>
       <li><span class="n">11</span><span lang="en">Apply the effect atomically, assign the next id, answer</span><span lang="es">Aplicar el efecto de forma atómica, asignar el siguiente id, responder</span><span class="codes"><span class="chip s2">200</span><span class="chip s2">201</span></span></li>
     </ol>
 
@@ -448,7 +447,7 @@ td.mono{white-space:nowrap}
       <table>
         <thead><tr><th><span lang="en">Interface</span><span lang="es">Interfaz</span></th><th><span lang="en">In → out</span><span lang="es">Entra → sale</span></th><th><span lang="en">Errors</span><span lang="es">Errores</span></th><th><span lang="en">Guarantees</span><span lang="es">Garantías</span></th></tr></thead>
         <tbody>
-          <tr><td><code>POST /msg</code></td><td><code>{"m":"CMD;args;CTRL"}</code> → <span lang="en">command result</span><span lang="es">resultado del comando</span></td><td class="mono">E100–E510</td><td><span lang="en">First failing check wins; failed requests change no state except the lock counter on E506</span><span lang="es">Gana el primer chequeo que falla; un request fallido no cambia estado, salvo el contador de bloqueo en E506</span></td></tr>
+          <tr><td><code>POST /msg</code></td><td><code>{"m":"CMD;args;CTRL"}</code> → <span lang="en">command result</span><span lang="es">resultado del comando</span></td><td class="mono">E100–E510</td><td><span lang="en">First failing check wins; failed requests change no state except the lock counter on E506 and E507</span><span lang="es">Gana el primer chequeo que falla; un request fallido no cambia estado, salvo el contador de bloqueo en E506 y E507</span></td></tr>
           <tr><td><code>POST /__reset</code></td><td>— → <code>{"ok":true}</code></td><td class="mono">E001, E404</td><td><span lang="en">Clears accounts, operations and id sequences for the token; X-Req keeps counting</span><span lang="es">Limpia cuentas, operaciones y secuencias de ids del token; X-Req sigue contando</span></td></tr>
           <tr><td><code>GET /health</code></td><td>— → <code>{"ok":true}</code></td><td class="mono">E001, E404</td><td><span lang="en">Requires the token, like the original</span><span lang="es">Exige token, como el original</span></td></tr>
           <tr><td><span lang="en">pipeline → store</span><span lang="es">pipeline → store</span></td><td><span lang="en">validated command → mutation + new id</span><span lang="es">comando validado → mutación + id nuevo</span></td><td>—</td><td><span lang="en">Effects run only after every check passed; ids are never consumed by failures</span><span lang="es">Los efectos corren solo tras pasar todos los chequeos; las fallas no consumen ids</span></td></tr>
@@ -460,8 +459,8 @@ td.mono{white-space:nowrap}
     <h3 lang="es" style="margin-top:36px">Modelo de dominio e invariantes</h3>
     <div class="grid2">
       <div class="card">
-        <p lang="en"><b>Account</b> <code>AC-0001…</code>: name, balance, consecutive limit failures, locked.<br><b>Operation</b> <code>OP-0001…</code>: deposit or transfer, amount, accounts, reversed.</p>
-        <p lang="es"><b>Cuenta</b> <code>AC-0001…</code>: nombre, saldo, rechazos consecutivos por límite, bloqueada.<br><b>Operación</b> <code>OP-0001…</code>: depósito o transferencia, monto, cuentas, anulada.</p>
+        <p lang="en"><b>Account</b> <code>AC-0001…</code>: name, balance, consecutive rejected transfers, locked.<br><b>Operation</b> <code>OP-0001…</code>: deposit or transfer, amount, accounts, reversed.</p>
+        <p lang="es"><b>Cuenta</b> <code>AC-0001…</code>: nombre, saldo, transferencias rechazadas consecutivas, bloqueada.<br><b>Operación</b> <code>OP-0001…</code>: depósito o transferencia, monto, cuentas, anulada.</p>
       </div>
       <div class="card">
         <ul lang="en"><li>Ids are sequential per token and restart after a reset</li><li>An operation is reversed at most once</li><li>A locked account can still receive funds and deposits</li><li>A transfer never moves more than the limit or the balance</li></ul>
@@ -596,8 +595,8 @@ td.mono{white-space:nowrap}
     </div>
 
     <h3 lang="en" style="margin-top:32px">Open questions to validate</h3><h3 lang="es" style="margin-top:32px">Preguntas abiertas por validar</h3>
-    <ul lang="en"><li>Does an E507 between two E506 reset the lock counter?</li><li>Does a lock expire with time or with any other command?</li><li>Body size limit, duplicate JSON keys, non-UTF-8 bytes</li><li>Query strings, <code>HEAD</code> and <code>OPTIONS</code> on known routes</li><li>What happens after <code>AC-9999</code> or <code>OP-9999</code>?</li><li>Will the limit or other rules change again before 20:00?</li></ul>
-    <ul lang="es"><li>¿Un E507 entre dos E506 reinicia el contador de bloqueo?</li><li>¿El bloqueo expira con el tiempo o con algún otro comando?</li><li>Límite de tamaño del cuerpo, claves JSON duplicadas, bytes no UTF-8</li><li>Query strings, <code>HEAD</code> y <code>OPTIONS</code> en rutas conocidas</li><li>¿Qué pasa después de <code>AC-9999</code> u <code>OP-9999</code>?</li><li>¿Cambiará otra vez el límite u otra regla antes de las 20:00?</li></ul>
+    <ul lang="en"><li>Does a lock expire with time or with any other command?</li><li>Body size limit, duplicate JSON keys, non-UTF-8 bytes</li><li><code>HEAD</code> and <code>OPTIONS</code> on known routes</li><li>What happens after <code>AC-9999</code> or <code>OP-9999</code>?</li><li>Will the limit or other rules change again before 20:00?</li></ul>
+    <ul lang="es"><li>¿El bloqueo expira con el tiempo o con algún otro comando?</li><li>Límite de tamaño del cuerpo, claves JSON duplicadas, bytes no UTF-8</li><li><code>HEAD</code> y <code>OPTIONS</code> en rutas conocidas</li><li>¿Qué pasa después de <code>AC-9999</code> u <code>OP-9999</code>?</li><li>¿Cambiará otra vez el límite u otra regla antes de las 20:00?</li></ul>
 
     <h3 lang="en" style="margin-top:32px">Inherited risks a new client should not copy</h3>
     <h3 lang="es" style="margin-top:32px">Riesgos heredados que un cliente nuevo no debería copiar</h3>

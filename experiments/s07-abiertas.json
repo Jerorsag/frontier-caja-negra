@@ -1,0 +1,24 @@
+{
+  "seq": "s07",
+  "steps": [
+    { "hipotesis": "Setup: cuenta A", "request": { "m": "ALTA;A;62" } },
+    { "hipotesis": "Setup: cuenta B", "request": { "m": "ALTA;B;59" } },
+    { "hipotesis": "Setup: saldo 50000 en A", "request": { "m": "DEPOSITO;AC-0001;50000;39" } },
+    { "hipotesis": "Contador de bloqueo: E506 #1", "request": { "m": "TRANSFER;AC-0001;AC-0002;100001;9" } },
+    { "hipotesis": "Contador de bloqueo: E506 #2", "request": { "m": "TRANSFER;AC-0001;AC-0002;100001;9" } },
+    { "hipotesis": "¿Un E507 (saldo insuficiente) reinicia el contador de E506?", "request": { "m": "TRANSFER;AC-0001;AC-0002;60000;32" } },
+    { "hipotesis": "E506 tras el E507: si el E507 no reinicia, este es el 3.º consecutivo", "request": { "m": "TRANSFER;AC-0001;AC-0002;100001;9" } },
+    { "hipotesis": "Si sale E510: el E507 no reinicia el contador; si sale OK: sí lo reinicia", "request": { "m": "TRANSFER;AC-0001;AC-0002;10;13" } },
+    { "hipotesis": "Aridad vs monto: DEPOSITO con argumento extra y monto inválido → ¿E302 o E303?", "request": { "m": "DEPOSITO;AC-0001;abc;x;62" } },
+    { "hipotesis": "Aridad vs cuenta inexistente: CONSULTA con argumento extra sobre cuenta inexistente", "request": { "m": "CONSULTA;AC-0099;x;56" } },
+    { "hipotesis": "Segmento vacío en medio del mensaje", "request": { "m": "ALTA;;Ana;50" } },
+    { "hipotesis": "Nombre con solo espacios (segmento no vacío)", "request": { "m": "ALTA;   ;85" } },
+    { "hipotesis": "Nombre con salto de línea", "request": { "m": "ALTA;Ana\nMaria;44" } },
+    { "hipotesis": "Claves JSON duplicadas: ¿gana la primera o la última m?", "raw": "{\"m\":\"PING;1\",\"m\":123}" },
+    { "hipotesis": "Query string en /msg: ¿se ignora o es ruta desconocida?", "path": "/msg?x=1", "request": { "m": "PING;1" } },
+    { "hipotesis": "Query string en /health", "path": "/health?x=1", "method": "GET" },
+    { "hipotesis": "HEAD /health", "path": "/health", "method": "HEAD" },
+    { "hipotesis": "OPTIONS /msg (preflight CORS)", "path": "/msg", "method": "OPTIONS" },
+    { "hipotesis": "Comando vacío con control", "request": { "m": ";1" } }
+  ]
+}

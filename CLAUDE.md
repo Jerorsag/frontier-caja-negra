@@ -50,6 +50,7 @@ docs/              SPEC, requirements, architecture, ADRs, API, testing, AI work
 - **Log every request to the original through `tools/probe.mjs`.** No curl, no ad-hoc scripts, and never `tools/diff.mjs --target <original>`. One hypothesis per request.
 - **Never commit `.env.tools` or tokens.** The team token lives in the `TEAM_TOKEN` environment variable.
 - **Keep error bodies verbatim.** Accents, the typo `recieved`, `cuentaId` vs `cuenta_id` and the trailing space in E301 are part of the contract. Do not "fix" them.
+- **The lock rule:** three consecutive rejected transfers from the same source (E506 limit or E507 insufficient funds) lock it (E510); a successful transfer resets the count (experiments 99–105, 125–134, 149–153).
 - **The error order is contract.** The first failing check answers. Do not reorder checks in `protocol.ts` without an experiment that proves the new order.
 - **`experimentos.jsonl` is an official deliverable.** Do not change its format, and do not edit `request`, `status` or `response` by hand; only `conclusion` is added afterwards.
 - **Never claim a behavior without evidence.** Cite experiment ids. Mark what was not probed as assumed (`supuesto` in the specification).

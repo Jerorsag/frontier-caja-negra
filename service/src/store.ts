@@ -3,7 +3,7 @@ export interface Account {
   id: string;
   name: string;
   balance: number;
-  consecutiveLimitFailures: number;
+  consecutiveRejections: number;
   locked: boolean;
 }
 

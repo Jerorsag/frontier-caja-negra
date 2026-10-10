@@ -36,11 +36,10 @@ Confidence levels: **confirmed** = probed and repeated; **probable** = seen once
 |---|---|---|
 | Checksum = 98 − (N mod 97) over the uppercased message, A=1…Z=26, other characters dropped, "00" appended | confirmed | examples 1–20, 43–60 |
 | Transfer limit is a fixed 100,000 per transfer (inclusive) | confirmed | 74–75, 99–101, 125–126 |
-| 3 consecutive limit rejections lock the source; a success resets the count | confirmed | 99–105, 125–134 |
+| 3 consecutive rejected transfers (E506 limit or E507 insufficient funds) lock the source; a success resets the count | confirmed | 99–105, 125–134, 149–153 |
 | The limit changed between 10:36 and 10:44 | probable | 64 vs 125 |
-| An E507 (insufficient funds) does not change the lock counter | assumed | — |
 | A lock never expires within a session | assumed | — |
-| Query strings are ignored when matching routes | assumed | — |
+| Query strings are ignored when matching routes | confirmed | 160–161 |
 
 ## 04 · Risks and hard cases
 
@@ -120,7 +119,7 @@ Dependency rule: `server → protocol → store / control / errors / config`.
 | 07 | Known command, then arity | 400 E301, 400 E302 |
 | 08 | Amount 1…9,999,999,999 (no sign, no leading zero), then source ≠ destination | 400 E303, 400 E304 |
 | 09 | Account or operation exists (case-sensitive ids) | 404 E401, 404 E402 |
-| 10 | Locked source → limit (updates the lock counter) → balance | 409 E510, 422 E506, 422 E507 |
+| 10 | Locked source → limit → balance (each rejection updates the lock counter) | 409 E510, 422 E506, 422 E507 |
 | 11 | Apply the effect, assign the next id, answer | 200, 201 |
 
 Exact bodies and the evidence for each step: [api.md](../api.md).
@@ -129,14 +128,14 @@ Exact bodies and the evidence for each step: [api.md](../api.md).
 
 | Interface | In → out | Errors | Guarantees |
 |---|---|---|---|
-| `POST /msg` | `{"m":"CMD;args;CTRL"}` → command result | E100–E510 | First failing check wins; failed requests change no state except the lock counter on E506 |
+| `POST /msg` | `{"m":"CMD;args;CTRL"}` → command result | E100–E510 | First failing check wins; failed requests change no state except the lock counter on E506 and E507 |
 | `POST /__reset` | — → `{"ok":true}` | E001, E404 | Clears accounts, operations and id sequences for the token; `X-Req` keeps counting |
 | `GET /health` | — → `{"ok":true}` | E001, E404 | Requires the token, like the original |
 | pipeline → store | validated command → mutation + new id | — | Effects run only after every check passed; ids are never consumed by failures |
 
 ### Domain model and invariants
 
-- **Account** `AC-0001…`: name, balance, consecutive limit failures, locked.
+- **Account** `AC-0001…`: name, balance, consecutive rejected transfers, locked.
 - **Operation** `OP-0001…`: deposit or transfer, amount, accounts, reversed.
 
 Invariants:
@@ -208,10 +207,9 @@ Only the first milestone is recorded as done in the published design. The rest i
 
 ### Open questions to validate
 
-- Does an E507 between two E506 reset the lock counter?
 - Does a lock expire with time or with any other command?
 - Body size limit, duplicate JSON keys, non-UTF-8 bytes.
-- Query strings, `HEAD` and `OPTIONS` on known routes.
+- `HEAD` and `OPTIONS` on known routes.
 - What happens after `AC-9999` or `OP-9999`?
 - Will the limit or other rules change again before 20:00?
 

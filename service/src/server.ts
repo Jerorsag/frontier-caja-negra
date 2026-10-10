@@ -49,7 +49,7 @@ const server = http.createServer((req, res) => {
   const chunks: Buffer[] = [];
   req.on('data', (c: Buffer) => chunks.push(c));
   req.on('end', () => {
-    const path = (req.url ?? '/').split('?')[0]; // assumed: query string ignored
+    const path = (req.url ?? '/').split('?')[0]; // query string ignored (exp. 160-161)
     const route = `${req.method} ${path}`;
     const respond = (reply: Reply, headers?: Record<string, string>, command?: string): void => {
       send(res, reply, headers);

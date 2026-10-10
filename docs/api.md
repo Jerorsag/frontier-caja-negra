@@ -15,7 +15,7 @@ All response bodies are JSON. Bodies below are exact: field names, accents, the 
 
 - Paths are exact and case-sensitive: `/msg/` and `/MSG` are 404. Evidence: 36, 37.
 - The route is checked before the token: an unknown route without a token is 404, not 401. Evidence: 19.
-- Query strings are ignored when matching the route. **Assumed.**
+- Query strings are ignored when matching the route: `/msg?x=1` and `/health?x=1` answer like `/msg` and `/health`. Evidence: 160, 161.
 
 ## Authentication
 
@@ -105,10 +105,9 @@ The control is compared as exact text: `3` is valid where `03` is not. Evidence:
 
 - Moves the amount from source to destination and returns the next operation id. Evidence: 63, 79.
 - Limit: an amount greater than 100,000 is 422 E506. Exactly 100,000 is accepted. The limit does not depend on the balance. Evidence: 74, 75, 125, 126.
-- Lock: 3 consecutive E506 on the same source lock it. From then on every transfer from it is 409 E510, even with a valid amount. A successful transfer resets the count. Evidence: 99–103, 127–134.
+- Lock: 3 consecutive rejected transfers from the same source lock it. A rejection is an E506 (limit) or an E507 (insufficient funds). From then on every transfer from it is 409 E510, even with a valid amount. A successful transfer resets the count. Evidence: 99–103, 127–134, 149–153.
 - The lock applies to the source only: a locked account still receives transfers. Evidence: 136.
 - Rejected transfers move no money and consume no operation id. Evidence: 111, 112.
-- An E507 does not change the lock counter. **Assumed.**
 - A lock does not expire within a session. **Assumed.**
 
 ### ANULA
@@ -126,7 +125,7 @@ A valid amount is a positive integer from 1 to 9,999,999,999 written with digits
 ### Ids and failed requests
 
 - Ids are sequential per token and restart after `POST /__reset`. Evidence: 71.
-- Failed requests consume no id and change no state, except the lock counter on E506. Evidence: 59, 92, 111.
+- Failed requests consume no id and change no state, except the lock counter on E506 and E507. Evidence: 59, 92, 111, 151–152.
 - Behavior after `AC-9999` or `OP-9999` is not probed; the replacement keeps counting (`AC-10000`). **Assumed.**
 
 ## Errors
@@ -168,6 +167,8 @@ E401 and E402 share a position because no command can produce both.
 | E104 (empty segment) | E201 / E202 (control) | 24 |
 | E202 (control) | E301 (command) | 6 |
 | E202 (control) | E302 (arity) | 43 |
+| E302 (arity) | E303 (amount) | 154 |
+| E302 (arity) | E401 (account) | 155 |
 | E303 (amount) | E304 (same account) | 88 |
 | E303 (amount) | E401 (account) | 86 |
 | E304 (same account) | E401 (account) | 87 |
@@ -176,7 +177,7 @@ E401 and E402 share a position because no command can produce both.
 | E510 (lock) | E507 (balance) | 105 |
 | E506 (limit) | E507 (balance) | 108 |
 
-Not pinned by a two-fault experiment, so **assumed** (the replacement follows the order of `service/src/protocol.ts`): E302 (arity) before E303, E304 and E401. Experiments 93 and 94 show E302 on its own, never together with a bad amount or a missing account.
+Not pinned by a two-fault experiment, so **assumed** (the replacement follows the order of `service/src/protocol.ts`): E302 (arity) before E304 (same account). Arity before amount and before a missing account is confirmed by 154 and 155.
 
 ## Changes during the day
 

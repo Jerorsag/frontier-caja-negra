@@ -17,7 +17,7 @@ How to read **Status**:
 | FR3 | Requests without the team token, or with another token, answer like the original (401). | 11, 12, 17, 20, 39 | Replay of s01 and s02 | Implemented |
 | FR4 | Validate message integrity (format, segments, checksum) in the original's order. | 4–10, 22–26, 43, 45 | Replay of s01–s02; error-order tests in `service/src/protocol.test.ts` | Implemented |
 | FR5 | Implement the six commands (`PING`, `ALTA`, `CONSULTA`, `DEPOSITO`, `TRANSFER`, `ANULA`) with their effects and exact responses. | Public examples 1–20; s03–s06 (42–145) | Replay of s03–s06 and `--examples` | Implemented |
-| FR6 | Keep memory between requests: accounts, balances, operations, lock counters, sequential ids. | 46–47, 59, 102, 134 | Replay of s03–s06 | Implemented |
+| FR6 | Keep memory between requests: accounts, balances, operations, lock counters, sequential ids. | 46–47, 59, 102, 134, 149–153 | Replay of s04–s07; lock tests in `service/src/protocol.test.ts` | Implemented |
 | FR7 | Deliver the specification and `experimentos.jsonl` in the required format. | Brief (README-Reto2.md) | Manual review against the brief | Log delivered (145 lines); specification planned |
 
 ## Non-functional requirements
@@ -31,15 +31,17 @@ How to read **Status**:
 | NFR5 | Isolation: zero calls to the original or other replacements. | — | Code review: `service/src` imports only `node:http` and local modules | Implemented |
 | NFR6 | Changeability: a detected behavior change is fixed, verified and redeployed in < 15 min. | 64 vs 125 | Limits are environment variables in `service/src/config.ts`; drift replay against the original | Implemented in code; the 15 min target is not measured |
 
-## Open questions (not probed yet)
+## Open questions
 
-From section 08 of the design. Each one is a default in the replacement until an experiment says otherwise.
+From section 08 of the design. Each one is a default in the replacement until an experiment says otherwise; the ones answered by sequence s07 are marked confirmed.
+
+Also confirmed by s07: arity (E302) is evaluated before the amount (E303, experiment 154) and before a missing account (E401, experiment 155).
 
 | Question | Current default in `service/src` | Confidence |
 |---|---|---|
-| Does an E507 between two E506 reset the lock counter? | No: E507 leaves the counter unchanged | assumed |
+| Does an E507 between two E506 reset the lock counter? | No, and it counts: three consecutive rejected transfers (E506 or E507) lock the source | confirmed (149–153) |
 | Does a lock expire with time or with another command? | No: only `POST /__reset` clears it | assumed |
-| Are query strings ignored when matching routes? | Yes: the path is cut at `?` | assumed |
+| Are query strings ignored when matching routes? | Yes: the path is cut at `?` | confirmed (160–161) |
 | Body size limit, duplicate JSON keys, non-UTF-8 bytes | No size limit; `JSON.parse` semantics | assumed |
 | `HEAD` and `OPTIONS` on known routes | 404 E404, like any other unknown method | assumed |
 | What happens after `AC-9999` or `OP-9999`? | The number keeps growing (`AC-10000`) | assumed |

@@ -195,6 +195,22 @@ test('a successful transfer resets the count: three non-consecutive E506 do not 
   assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;50'), received('OP-0003'));
 });
 
+test('E507 also counts toward the lock: E506, E506, E507 → the next transfer is E510 (#149–153)', () => {
+  const s = twoAccounts(50000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;60000'), E.insufficientFunds);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.accountLocked); // #152
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), E.accountLocked); // #153: even a valid amount
+  assert.equal(balance(s, 'AC-0001'), 50000);
+});
+
+test('E302 before E303 and before E401: wrong arity with a bad amount or an unknown account (#154, #155)', () => {
+  const s = twoAccounts();
+  assert.deepEqual(raw(s, 'DEPOSITO;AC-0001;abc;x;62'), E.invalidArity);
+  assert.deepEqual(raw(s, 'CONSULTA;AC-0099;x;56'), E.invalidArity);
+});
+
 test('a locked account still receives deposits and transfers (#135, #136)', () => {
   const s = lockedSource(1000);
   ok(s, 'DEPOSITO;AC-0002;500');
