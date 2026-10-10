@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black Box Replacement · System Design</title>
+<meta name="description" content="System design document: reverse-engineering an undocumented banking service and rebuilding it byte for byte. Frontier hackathon by Lab10, October 2026. By Jerónimo Rodríguez.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --panel:#f6f8fa; --border:#d0d7de; --fg:#1f2328; --muted:#59636e; --faint:#eaeef2;
+  --accent:#0969da; --accent-soft:rgba(9,105,218,.08); --good:#1a7f37; --warn:#9a6700; --bad:#cf222e;
+  --code-bg:#f6f8fa;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --muted:#8b949e; --faint:#21262d;
+    --accent:#58a6ff; --accent-soft:rgba(88,166,255,.10); --good:#3fb950; --warn:#d29922; --bad:#f85149; --code-bg:#161b22;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --muted:#8b949e; --faint:#21262d;
+  --accent:#58a6ff; --accent-soft:rgba(88,166,255,.10); --good:#3fb950; --warn:#d29922; --bad:#f85149; --code-bg:#161b22;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;font-size:.88em}
+code{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:.1em .35em}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+html[data-lang="en"] [lang="es"], html[data-lang="es"] [lang="en"]{display:none !important}
+
+/* layout */
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+header.top .wrap{display:flex;align-items:center;gap:16px;height:56px}
+.brand{font-weight:600;white-space:nowrap}
+.brand .mono{color:var(--muted);font-weight:400}
+nav.links{display:flex;gap:18px;margin-left:auto;font-size:14px}
+nav.links a{color:var(--muted)} nav.links a:hover{color:var(--fg);text-decoration:none}
+.toggles{display:flex;gap:6px}
+.toggles button{font:500 13px Inter,sans-serif;background:var(--panel);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer}
+.toggles button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+@media (max-width:860px){ nav.links{display:none} .toggles{margin-left:auto} }
+
+section{padding:64px 0;border-bottom:1px solid var(--faint)}
+section:last-of-type{border-bottom:0}
+h1{font-size:clamp(32px,5vw,52px);line-height:1.1;letter-spacing:-.02em;margin:0 0 16px}
+h2{font-size:28px;letter-spacing:-.01em;margin:0 0 8px}
+h3{font-size:17px;margin:0 0 6px}
+.eyebrow{font:500 13px "JetBrains Mono",monospace;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.lead{font-size:19px;color:var(--muted);max-width:760px;margin:0 0 28px}
+.section-lead{color:var(--muted);max-width:760px;margin:0 0 28px}
+
+/* hero */
+.hero{padding:72px 0 56px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:32px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.stat b{display:block;font-size:30px;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:14px}
+@media (max-width:700px){ .stats{grid-template-columns:repeat(2,1fr)} }
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:14px;margin-top:20px}
+
+/* cards & grids */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:820px){ .grid2,.grid3{grid-template-columns:1fr} }
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card p{margin:0;color:var(--muted)}
+
+/* method loop */
+.loop{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;counter-reset:step}
+.loop .card{position:relative;padding:18px 16px}
+.loop .card::before{counter-increment:step;content:"0" counter(step);font:500 13px "JetBrains Mono",monospace;color:var(--accent);display:block;margin-bottom:6px}
+.loop .card p{font-size:14px}
+@media (max-width:900px){ .loop{grid-template-columns:1fr 1fr} }
+@media (max-width:520px){ .loop{grid-template-columns:1fr} }
+
+/* figure */
+figure{margin:0}
+figure svg{width:100%;height:auto;display:block}
+figcaption{color:var(--muted);font-size:14px;margin-top:10px}
+
+/* pipeline */
+ol.pipeline{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+ol.pipeline li{display:grid;grid-template-columns:36px 1fr auto;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+ol.pipeline .n{font:500 13px "JetBrains Mono",monospace;color:var(--muted)}
+ol.pipeline .codes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.chip{font:500 12px "JetBrains Mono",monospace;border-radius:999px;padding:2px 9px;border:1px solid var(--border);white-space:nowrap}
+.s2{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,transparent)}
+.s4{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.s5{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+.shortcut{background:var(--accent-soft) !important;border-color:var(--accent) !important}
+@media (max-width:620px){ ol.pipeline li{grid-template-columns:28px 1fr} ol.pipeline .codes{grid-column:2;justify-content:flex-start} }
+
+/* checksum */
+.formula{font:500 18px "JetBrains Mono",monospace;background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto}
+.calc label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+.calc input{width:100%;font:500 16px "JetBrains Mono",monospace;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.calc input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.calc .out{margin-top:14px;font:500 15px "JetBrains Mono",monospace;word-break:break-all}
+.calc .out .ok{color:var(--good)}
+.calc .steps{margin-top:8px;font-size:13px;color:var(--muted);font-family:"JetBrains Mono",monospace;word-break:break-all}
+
+/* tables */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--faint);vertical-align:top}
+th{background:var(--panel);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+
+/* timeline */
+.timeline{border-left:2px solid var(--border);margin-left:8px;padding-left:22px;display:grid;gap:18px}
+.timeline .ev{position:relative}
+.timeline .ev::before{content:"";position:absolute;left:-29px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--accent)}
+.timeline .ev.change::before{background:var(--warn);border-color:var(--warn)}
+.timeline time{font:500 13px "JetBrains Mono",monospace;color:var(--muted)}
+
+/* log explorer */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.toolbar input,.toolbar select{font:14px Inter,sans-serif;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.toolbar input{flex:1;min-width:200px}
+#log td:nth-child(1){font-family:"JetBrains Mono",monospace;color:var(--muted)}
+#log td.req,#log td.res{font-family:"JetBrains Mono",monospace;font-size:12.5px;max-width:280px;word-break:break-all}
+#log td.concl{color:var(--muted);min-width:220px}
+.count{color:var(--muted);font-size:14px;margin-top:10px}
+footer{padding:40px 0 56px;color:var(--muted);font-size:14px}
+
+.toc{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:28px}
+.toc a{display:flex;gap:10px;align-items:baseline;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--fg);font-size:14px}
+.toc a:hover{border-color:var(--accent);text-decoration:none}
+.toc b{font:500 12px "JetBrains Mono",monospace;color:var(--accent)}
+@media (max-width:820px){ .toc{grid-template-columns:1fr 1fr} }
+h3{margin-top:0}
+section h3 + .table-wrap, section h3 + .grid3, section h3 + .grid2{margin-top:12px}
+.card p + p{margin-top:10px}
+.card ul,.wrap > ul, section ul{margin:8px 0 0;padding-left:20px;color:var(--muted)}
+.card ul li, section ul li{margin:4px 0}
+ul.checks{list-style:none;padding-left:0}
+ul.checks li::before{content:"✓ ";color:var(--good);font-weight:600}
+.timeline .ev.done::before{background:var(--good);border-color:var(--good)}
+td.mono{white-space:nowrap}
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Black Box <span class="mono">/ system design</span></div>
+    <nav class="links">
+      <a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a>
+      <a href="#log"><span lang="en">Evidence</span><span lang="es">Evidencia</span></a>
+    </nav>
+    <div class="toggles">
+      <button id="btn-en" aria-pressed="true">EN</button>
+      <button id="btn-es" aria-pressed="false">ES</button>
+      <button id="btn-theme" aria-label="Toggle theme">◐</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">System design document · Frontier · Lab10 · Oct 2026</div>
+    <h1 lang="en">Rebuilding an undocumented banking service from its answers alone</h1>
+    <h1 lang="es">Reconstruir un servicio bancario sin documentación solo a partir de sus respuestas</h1>
+    <p class="lead" lang="en">A drop-in replacement for a 10-year-old message service with no source code and no documentation. Every behavior is discovered through a logged experiment against the original, written as a rule with a confidence level, and replayed as a test against the replacement.</p>
+    <p class="lead" lang="es">Un reemplazo directo para un servicio de mensajes de 10 años, sin código fuente ni documentación. Cada comportamiento se descubre con un experimento registrado contra el original, se escribe como regla con un nivel de confianza y se reproduce como test contra el reemplazo.</p>
+    <div class="stats">
+      <div class="stat"><b id="st-req">—</b><span lang="en">requests probed</span><span lang="es">requests de exploración</span></div>
+      <div class="stat"><b id="st-seq">—</b><span lang="en">experiment sequences</span><span lang="es">secuencias de experimentos</span></div>
+      <div class="stat"><b>17</b><span lang="en">error codes mapped, in order</span><span lang="es">códigos de error mapeados, en orden</span></div>
+      <div class="stat"><b>144/145</b><span lang="en">logged responses matched (11:00)</span><span lang="es">respuestas del log igualadas (11:00)</span></div>
+    </div>
+    <div class="meta">
+      <span>Jerónimo Rodríguez</span>
+      <a href="https://github.com/Jerorsag" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://linkedin.com/in/jerorodriguez" target="_blank" rel="noopener">LinkedIn</a>
+      <span class="mono">Node.js · TypeScript · node:http · Railway</span>
+    </div>
+    <nav class="toc">
+      <a href="#s1"><b>01</b><span lang="en">Summary and objective</span><span lang="es">Resumen y objetivo</span></a>
+      <a href="#s2"><b>02</b><span lang="en">Requirements and constraints</span><span lang="es">Requisitos y restricciones</span></a>
+      <a href="#s3"><b>03</b><span lang="en">Scope and assumptions</span><span lang="es">Alcance y supuestos</span></a>
+      <a href="#s4"><b>04</b><span lang="en">Risks and hard cases</span><span lang="es">Riesgos y casos difíciles</span></a>
+      <a href="#s5"><b>05</b><span lang="en">Proposed architecture</span><span lang="es">Arquitectura propuesta</span></a>
+      <a href="#s6"><b>06</b><span lang="en">Decisions and trade-offs</span><span lang="es">Decisiones y trade-offs</span></a>
+      <a href="#s7"><b>07</b><span lang="en">Validation and measurement</span><span lang="es">Validación y medición</span></a>
+      <a href="#s8"><b>08</b><span lang="en">Implementation plan and open questions</span><span lang="es">Plan de implementación y preguntas abiertas</span></a>
+    </nav>
+  </div>
+</section>
+
+<!-- 01 -->
+<section id="s1">
+  <div class="wrap">
+    <div class="eyebrow">01 · <span lang="en">Summary and objective</span><span lang="es">Resumen y objetivo</span></div>
+    <h2 lang="en">Replace the service without any client noticing</h2>
+    <h2 lang="es">Reemplazar el servicio sin que ningún cliente lo note</h2>
+    <div class="grid2">
+      <div>
+        <p lang="en"><b>What we build.</b> An HTTP service that accepts exactly the same requests as the original and returns the same status and the same body, errors included. It also ships a specification that lets another engineer reimplement it without touching the original, and the experiment log that proves each claim.</p>
+        <p lang="es"><b>Qué construimos.</b> Un servicio HTTP que acepta exactamente los mismos requests que el original y devuelve el mismo status y el mismo cuerpo, errores incluidos. Además entrega una especificación que permite a otro ingeniero reimplementarlo sin tocar el original, y el log de experimentos que prueba cada afirmación.</p>
+        <p lang="en"><b>For whom.</b> The company that depends on the service (its clients must not notice the swap) and the engineers who will maintain it after the people who wrote it left.</p>
+        <p lang="es"><b>Para quién.</b> La empresa que depende del servicio (sus clientes no deben notar el cambio) y los ingenieros que lo mantendrán ahora que sus autores ya no están.</p>
+      </div>
+      <div>
+        <p lang="en"><b>What it turned out to be.</b> A small core-banking protocol over <code>POST /msg</code>: open accounts, check balances, deposit, transfer and reverse operations, with a mod-97 checksum per message, per-client state, a transfer limit and an account lock.</p>
+        <p lang="es"><b>Qué resultó ser.</b> Un pequeño protocolo de core bancario sobre <code>POST /msg</code>: abrir cuentas, consultar saldos, depositar, transferir y anular operaciones, con un checksum mod 97 por mensaje, estado por cliente, un límite de transferencia y un bloqueo de cuenta.</p>
+        <p lang="en"><b>Expected result.</b> ≥ 95 of the 100 hidden tests passing at 20:00, every documented behavior backed by a cited experiment, and zero false claims in the specification.</p>
+        <p lang="es"><b>Resultado esperado.</b> ≥ 95 de los 100 tests ocultos aprobados a las 20:00, cada comportamiento documentado respaldado por un experimento citado y cero afirmaciones falsas en la especificación.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 -->
+<section id="s2">
+  <div class="wrap">
+    <div class="eyebrow">02 · <span lang="en">Requirements and constraints</span><span lang="es">Requisitos y restricciones</span></div>
+    <h2 lang="en">What the replacement must do, and how we will know</h2>
+    <h2 lang="es">Qué debe hacer el reemplazo y cómo lo sabremos</h2>
+
+    <h3 lang="en">Functional requirements</h3><h3 lang="es">Requisitos funcionales</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th><span lang="en">Requirement</span><span lang="es">Requisito</span></th><th><span lang="en">Source</span><span lang="es">Fuente</span></th></tr></thead>
+        <tbody>
+          <tr><td class="mono">FR1</td><td><span lang="en"><code>GET /health</code> answers 200 when ready; <code>POST /__reset</code> restores the initial state of the caller's token.</span><span lang="es"><code>GET /health</code> responde 200 cuando está listo; <code>POST /__reset</code> restaura el estado inicial del token que llama.</span></td><td><span lang="en">Contract</span><span lang="es">Contrato</span></td></tr>
+          <tr><td class="mono">FR2</td><td><span lang="en">Any other route, method or body answers exactly like the original, unknown routes included.</span><span lang="es">Cualquier otra ruta, método o cuerpo responde exactamente como el original, incluidas las rutas inexistentes.</span></td><td><span lang="en">Contract</span><span lang="es">Contrato</span></td></tr>
+          <tr><td class="mono">FR3</td><td><span lang="en">Requests without the team token, or with another token, answer like the original (401).</span><span lang="es">Requests sin el token del equipo, o con otro token, responden como el original (401).</span></td><td><span lang="en">Contract · exp. 11, 12, 17</span><span lang="es">Contrato · exp. 11, 12, 17</span></td></tr>
+          <tr><td class="mono">FR4</td><td><span lang="en">Validate message integrity (format, segments, checksum) in the original's order.</span><span lang="es">Validar la integridad del mensaje (formato, segmentos, checksum) en el orden del original.</span></td><td><span lang="en">Exp. 4–10, 22–26, 43, 45</span><span lang="es">Exp. 4–10, 22–26, 43, 45</span></td></tr>
+          <tr><td class="mono">FR5</td><td><span lang="en">Implement the six commands: PING, ALTA, CONSULTA, DEPOSITO, TRANSFER, ANULA, with their effects and exact responses.</span><span lang="es">Implementar los seis comandos: PING, ALTA, CONSULTA, DEPOSITO, TRANSFER, ANULA, con sus efectos y respuestas exactas.</span></td><td><span lang="en">Examples · s03–s06</span><span lang="es">Ejemplos · s03–s06</span></td></tr>
+          <tr><td class="mono">FR6</td><td><span lang="en">Keep memory between requests: accounts, balances, operations, lock counters, sequential ids.</span><span lang="es">Mantener memoria entre requests: cuentas, saldos, operaciones, contadores de bloqueo, ids secuenciales.</span></td><td><span lang="en">Exp. 46–47, 59, 102, 134</span><span lang="es">Exp. 46–47, 59, 102, 134</span></td></tr>
+          <tr><td class="mono">FR7</td><td><span lang="en">Deliver the specification and <code>experimentos.jsonl</code> in the required format.</span><span lang="es">Entregar la especificación y <code>experimentos.jsonl</code> en el formato exigido.</span></td><td>README</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 lang="en" style="margin-top:32px">Non-functional requirements (each one measurable)</h3>
+    <h3 lang="es" style="margin-top:32px">Requisitos no funcionales (cada uno medible)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th><span lang="en">Quality</span><span lang="es">Atributo</span></th><th><span lang="en">Target</span><span lang="es">Objetivo</span></th><th><span lang="en">Why</span><span lang="es">Por qué</span></th></tr></thead>
+        <tbody>
+          <tr><td class="mono">NFR1</td><td><span lang="en">Exactness</span><span lang="es">Exactitud</span></td><td><span lang="en">Same status + same body (JSON key order free, strings and numbers identical) on 100% of replayed current-version sequences</span><span lang="es">Mismo status + mismo cuerpo (orden de claves libre, strings y números idénticos) en el 100% de las secuencias de la versión vigente</span></td><td><span lang="en">The evaluator's comparison rule</span><span lang="es">Regla de comparación del evaluador</span></td></tr>
+          <tr><td class="mono">NFR2</td><td><span lang="en">Latency</span><span lang="es">Latencia</span></td><td><span lang="en">p95 &lt; 50 ms per request on the deployed instance; hard budget 5 s per step</span><span lang="es">p95 &lt; 50 ms por request en la instancia desplegada; presupuesto duro de 5 s por paso</span></td><td><span lang="en">A step over 5 s fails the test</span><span lang="es">Un paso de más de 5 s reprueba el test</span></td></tr>
+          <tr><td class="mono">NFR3</td><td><span lang="en">Availability</span><span lang="es">Disponibilidad</span></td><td><span lang="en">Reachable from 20:00 until the end of demo day; health check green</span><span lang="es">Accesible desde las 20:00 hasta el fin del demo day; health check en verde</span></td><td><span lang="en">Delivery contract</span><span lang="es">Contrato de entrega</span></td></tr>
+          <tr><td class="mono">NFR4</td><td><span lang="en">Determinism</span><span lang="es">Determinismo</span></td><td><span lang="en">Same input sequence → same outputs, every run</span><span lang="es">Misma secuencia de entrada → mismas salidas, siempre</span></td><td><span lang="en">Exact-match scoring</span><span lang="es">Comparación exacta</span></td></tr>
+          <tr><td class="mono">NFR5</td><td><span lang="en">Isolation</span><span lang="es">Aislamiento</span></td><td><span lang="en">Zero calls to the original or other replacements</span><span lang="es">Cero llamadas al original u otros reemplazos</span></td><td><span lang="en">Rule: the set scores 0 otherwise</span><span lang="es">Regla: si no, el set vale 0</span></td></tr>
+          <tr><td class="mono">NFR6</td><td><span lang="en">Changeability</span><span lang="es">Adaptabilidad</span></td><td><span lang="en">A detected behavior change is fixed, verified and redeployed in &lt; 15 min</span><span lang="es">Un cambio de comportamiento detectado se corrige, verifica y redespliega en &lt; 15 min</span></td><td><span lang="en">The service changes during the day</span><span lang="es">El servicio cambia durante el día</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 lang="en" style="margin-top:32px">Constraints</h3><h3 lang="es" style="margin-top:32px">Restricciones</h3>
+    <div class="grid3">
+      <div class="card"><h3 lang="en">Time</h3><h3 lang="es">Tiempo</h3><p lang="en">One day, one engineer. Design by 12:00, delivery by 20:00.</p><p lang="es">Un día, un ingeniero. Diseño a las 12:00, entrega a las 20:00.</p></div>
+      <div class="card"><h3 lang="en">Probe budget</h3><h3 lang="es">Presupuesto de sondeo</h3><p lang="en">10 requests/s and 8,000/day per token; tokens stop working against the original at 20:00.</p><p lang="es">10 requests/s y 8.000/día por token; los tokens dejan de funcionar contra el original a las 20:00.</p></div>
+      <div class="card"><h3 lang="en">Runtime</h3><h3 lang="es">Ejecución</h3><p lang="en">The evaluator talks to one process; several instances would each hold their own state.</p><p lang="es">El evaluador habla con un solo proceso; varias instancias tendrían cada una su propio estado.</p></div>
+      <div class="card"><h3 lang="en">No shortcuts</h3><h3 lang="es">Sin atajos</h3><p lang="en">No tools that do the work; own scripts and fuzzers allowed.</p><p lang="es">Sin herramientas que hagan el trabajo; scripts y fuzzers propios permitidos.</p></div>
+      <div class="card"><h3 lang="en">Moving target</h3><h3 lang="es">Objetivo móvil</h3><p lang="en">The original can change; we are judged on the 20:00 version.</p><p lang="es">El original puede cambiar; se evalúa la versión de las 20:00.</p></div>
+      <div class="card"><h3 lang="en">Hidden tests</h3><h3 lang="es">Tests ocultos</h3><p lang="en">40 single requests, 45 sequences of 2–5, 15 of 6–12; none repeats the public examples.</p><p lang="es">40 de un request, 45 secuencias de 2–5, 15 de 6–12; ninguno repite los ejemplos públicos.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 -->
+<section id="s3">
+  <div class="wrap">
+    <div class="eyebrow">03 · <span lang="en">Scope and assumptions</span><span lang="es">Alcance y supuestos</span></div>
+    <h2 lang="en">Facts, assumptions and what stays out</h2>
+    <h2 lang="es">Hechos, supuestos y lo que queda fuera</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 lang="en">In scope</h3><h3 lang="es">Dentro del alcance</h3>
+        <ul lang="en"><li>The HTTP contract: routes, auth, bodies, every error and its order</li><li>The six commands and their state</li><li>Detection and replication of behavior changes during the day</li><li>Specification, experiment log and documentation</li></ul>
+        <ul lang="es"><li>El contrato HTTP: rutas, auth, cuerpos, cada error y su orden</li><li>Los seis comandos y su estado</li><li>Detección y réplica de cambios de comportamiento durante el día</li><li>Especificación, log de experimentos y documentación</li></ul>
+      </div>
+      <div class="card">
+        <h3 lang="en">Out of scope</h3><h3 lang="es">Fuera del alcance</h3>
+        <ul lang="en"><li>Durability across restarts (every test starts with a reset)</li><li>Horizontal scaling and multi-instance consistency</li><li>Response headers (not compared); <code>X-Req</code> is replicated anyway</li><li>"Fixing" inherited flaws: compatibility wins, they are listed as risks</li></ul>
+        <ul lang="es"><li>Durabilidad entre reinicios (cada test empieza con reset)</li><li>Escalado horizontal y consistencia multi-instancia</li><li>Headers de respuesta (no se comparan); <code>X-Req</code> se replica igual</li><li>"Corregir" fallas heredadas: gana la compatibilidad; se listan como riesgos</li></ul>
+      </div>
+    </div>
+    <h3 lang="en" style="margin-top:32px">Known facts vs assumptions</h3>
+    <h3 lang="es" style="margin-top:32px">Hechos conocidos vs supuestos</h3>
+    <p class="section-lead" lang="en">A hypothesis is never presented as a requirement. Confidence: <b>confirmed</b> = probed and repeated; <b>probable</b> = seen once or inferred; <b>assumed</b> = not probed, it is the replacement's default.</p>
+    <p class="section-lead" lang="es">Una hipótesis nunca se presenta como requisito. Confianza: <b>confirmado</b> = probado y repetido; <b>probable</b> = visto una vez o inferido; <b>supuesto</b> = no probado, es el default del reemplazo.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Statement</span><span lang="es">Afirmación</span></th><th><span lang="en">Confidence</span><span lang="es">Confianza</span></th><th><span lang="en">Evidence</span><span lang="es">Evidencia</span></th></tr></thead>
+        <tbody>
+          <tr><td><span lang="en">Checksum = 98 − (N mod 97) over the uppercased message, A=1…Z=26, other characters dropped, "00" appended</span><span lang="es">Checksum = 98 − (N mod 97) sobre el mensaje en mayúsculas, A=1…Z=26, otros caracteres eliminados, "00" al final</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">ex. 1–20, 43–60</td></tr>
+          <tr><td><span lang="en">Transfer limit is a fixed 100,000 per transfer (inclusive)</span><span lang="es">El límite es fijo: 100.000 por transferencia (inclusivo)</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">74–75, 99–101, 125–126</td></tr>
+          <tr><td><span lang="en">3 consecutive limit rejections lock the source; a success resets the count</span><span lang="es">3 rechazos consecutivos por límite bloquean el origen; un éxito reinicia la cuenta</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">99–105, 125–134</td></tr>
+          <tr><td><span lang="en">The limit changed between 10:36 and 10:44</span><span lang="es">El límite cambió entre las 10:36 y las 10:44</span></td><td><span class="chip s4">probable</span></td><td class="mono">64 vs 125</td></tr>
+          <tr><td><span lang="en">An E507 (insufficient funds) does not change the lock counter</span><span lang="es">Un E507 (saldo insuficiente) no cambia el contador de bloqueo</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
+          <tr><td><span lang="en">A lock never expires within a session</span><span lang="es">Un bloqueo no expira dentro de una sesión</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
+          <tr><td><span lang="en">Query strings are ignored when matching routes</span><span lang="es">Los query strings se ignoran al comparar rutas</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 04 -->
+<section id="s4">
+  <div class="wrap">
+    <div class="eyebrow">04 · <span lang="en">Risks and hard cases</span><span lang="es">Riesgos y casos difíciles</span></div>
+    <h2 lang="en">The cases that break a naive replacement</h2>
+    <h2 lang="es">Los casos que rompen un reemplazo ingenuo</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Hard case</span><span lang="es">Caso difícil</span></th><th><span lang="en">What the original does</span><span lang="es">Qué hace el original</span></th><th><span lang="en">How the design handles it</span><span lang="es">Cómo lo maneja el diseño</span></th></tr></thead>
+        <tbody>
+          <tr><td><span lang="en">Two faults in one message</span><span lang="es">Dos fallas en un mismo mensaje</span></td><td><span lang="en">Only the first check in its order fails</span><span lang="es">Solo falla el primer chequeo según su orden</span></td><td><span lang="en">One ordered pipeline; each pair of checks pinned by an experiment</span><span lang="es">Un pipeline ordenado; cada par de chequeos fijado con un experimento</span></td></tr>
+          <tr><td><span lang="en">Duplicates and retries</span><span lang="es">Duplicados y reintentos</span></td><td><span lang="en">ANULA is idempotent (second call: <code>ok:false</code>); ALTA with a repeated name creates a new account; a repeated DEPOSITO applies twice</span><span lang="es">ANULA es idempotente (segunda vez: <code>ok:false</code>); ALTA con nombre repetido crea otra cuenta; un DEPOSITO repetido se aplica dos veces</span></td><td><span lang="en">Replicated as-is; listed as an inherited risk (no idempotency key)</span><span lang="es">Se replica tal cual; se lista como riesgo heredado (no hay clave de idempotencia)</span></td></tr>
+          <tr><td><span lang="en">Concurrency</span><span lang="es">Concurrencia</span></td><td><span lang="en">The evaluator sends one step at a time per test</span><span lang="es">El evaluador envía un paso a la vez por test</span></td><td><span lang="en">Node's single event loop runs each request to completion: no interleaving, no locks needed</span><span lang="es">El event loop único de Node ejecuta cada request completo: sin intercalado, sin locks</span></td></tr>
+          <tr><td><span lang="en">Invalid data</span><span lang="es">Datos inválidos</span></td><td><span lang="en">Bad JSON, missing m, empty segments, malformed amounts, ids in lowercase</span><span lang="es">JSON inválido, sin m, segmentos vacíos, montos mal formados, ids en minúscula</span></td><td><span lang="en">Each mapped to its exact error; no trimming, no normalization beyond what the original does</span><span lang="es">Cada uno con su error exacto; sin recortar ni normalizar más de lo que hace el original</span></td></tr>
+          <tr><td><span lang="en">Negative balances</span><span lang="es">Saldos negativos</span></td><td><span lang="en">A reversal can leave an account below zero</span><span lang="es">Una anulación puede dejar una cuenta bajo cero</span></td><td><span lang="en">Replicated; reported in the spec's Risks section</span><span lang="es">Se replica; se reporta en la sección de Riesgos de la spec</span></td></tr>
+          <tr><td><span lang="en">The original changes</span><span lang="es">El original cambia</span></td><td><span lang="en">Already happened once (transfer limit)</span><span lang="es">Ya pasó una vez (límite de transferencia)</span></td><td><span lang="en">Hourly replay of the log against the original; business limits in configuration</span><span lang="es">Replay del log contra el original cada hora; límites de negocio en configuración</span></td></tr>
+          <tr><td><span lang="en">Process restart</span><span lang="es">Reinicio del proceso</span></td><td>—</td><td><span lang="en">State is lost, which is acceptable because every test begins with a reset; Railway restarts the process on crash</span><span lang="es">Se pierde el estado, aceptable porque cada test empieza con reset; Railway reinicia el proceso si cae</span></td></tr>
+          <tr><td><span lang="en">Several instances</span><span lang="es">Varias instancias</span></td><td>—</td><td><span lang="en">Pinned to one replica; documented in the deploy config</span><span lang="es">Fijado a una réplica; documentado en la configuración de deploy</span></td></tr>
+          <tr><td><span lang="en">Unseen input in the hidden set</span><span lang="es">Entrada no vista en el set oculto</span></td><td><span lang="en">Unknown</span><span lang="es">Desconocido</span></td><td><span lang="en">Targeted fuzzing of each boundary; any remaining unknown gets a stated default</span><span lang="es">Fuzzing dirigido de cada borde; lo que quede desconocido recibe un default declarado</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section id="s5">
+  <div class="wrap">
+    <div class="eyebrow">05 · <span lang="en">Proposed architecture</span><span lang="es">Arquitectura propuesta</span></div>
+    <h2 lang="en">The experiment log drives both the replacement and its tests</h2>
+    <h2 lang="es">El log de experimentos guía tanto el reemplazo como sus tests</h2>
+    <p class="section-lead" lang="en">Two halves with a hard boundary: exploration tooling that is the only thing allowed to reach the original, and the replacement, which never calls it.</p>
+    <p class="section-lead" lang="es">Dos mitades con un límite estricto: las herramientas de exploración, que son lo único que puede tocar el original, y el reemplazo, que nunca lo llama.</p>
+    <figure>
+      <svg viewBox="0 0 760 520" role="img" aria-label="Architecture: probe, experiment log, diff harness, original service, replacement and hidden evaluation">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+        <rect x="24" y="56" width="296" height="296" rx="10" fill="none" stroke="var(--border)" stroke-dasharray="5 4"/>
+        <text x="40" y="76" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--muted)">EXPLORATION · local only</text>
+        <g fill="none" stroke="var(--muted)" stroke-width="1.25">
+          <path d="M304 124H454" marker-end="url(#ar)"/><path d="M172 152V190" marker-end="url(#ar)"/><path d="M172 248V286" marker-end="url(#ar)"/>
+          <path d="M304 316H438" marker-end="url(#ar)"/><path d="M588 288V318" marker-end="url(#ar)"/><path d="M588 440V402" marker-end="url(#ar)"/>
+        </g>
+        <line x1="380" y1="150" x2="380" y2="270" stroke="var(--bad)" stroke-width="1.25" stroke-dasharray="4 4"/>
+        <text x="390" y="215" font-family="Inter, sans-serif" font-size="11" fill="var(--bad)">never calls</text>
+        <g font-family="Inter, sans-serif" font-size="11.5" fill="var(--muted)">
+          <text x="380" y="114" text-anchor="middle">HTTPS · after __reset</text><text x="182" y="175">append</text><text x="182" y="271">read</text>
+          <text x="372" y="306" text-anchor="middle">replay + compare</text><text x="598" y="425">HTTPS + Bearer</text>
+        </g>
+        <g fill="var(--panel)" stroke="var(--border)" stroke-width="1.25">
+          <rect x="40" y="96" width="264" height="56" rx="8"/><rect x="40" y="192" width="264" height="56" rx="8"/><rect x="40" y="288" width="264" height="56" rx="8"/>
+          <rect x="456" y="96" width="264" height="56" rx="8"/><rect x="456" y="440" width="264" height="56" rx="8"/>
+        </g>
+        <rect x="440" y="192" width="296" height="208" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+        <g fill="var(--bg)" stroke="var(--border)" stroke-width="1.25"><rect x="456" y="232" width="264" height="56" rx="8"/><rect x="456" y="320" width="264" height="56" rx="8"/></g>
+        <g font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="var(--fg)">
+          <text x="56" y="120">probe.mjs</text><text x="56" y="216">experimentos.jsonl</text><text x="56" y="312">diff.mjs</text>
+          <text x="472" y="120">Original service (oracle)</text><text x="456" y="216">Replacement · Railway, 1 replica</text>
+          <text x="472" y="256">Ordered check pipeline</text><text x="472" y="344">In-memory store per token</text><text x="472" y="464">Evaluator (100 hidden tests)</text>
+        </g>
+        <g font-family="Inter, sans-serif" font-size="11.5" fill="var(--muted)">
+          <text x="56" y="136">one hypothesis per request</text><text x="56" y="232">spec evidence + test suite</text><text x="56" y="328">replacement and original</text>
+          <text x="472" y="136">read-only, state per token</text><text x="472" y="272">auth → integrity → rules</text>
+          <text x="472" y="360">accounts, operations, counters</text><text x="472" y="480">reset, then 1–12 requests</text>
+        </g>
+      </svg>
+      <figcaption lang="en">Trust boundary: authentication happens at the replacement's edge; the dashed red line marks the dependency that must never exist.</figcaption>
+      <figcaption lang="es">Límite de confianza: la autenticación ocurre en el borde del reemplazo; la línea roja punteada marca la dependencia que nunca debe existir.</figcaption>
+    </figure>
+
+    <h3 lang="en" style="margin-top:36px">Components and responsibilities</h3>
+    <h3 lang="es" style="margin-top:36px">Componentes y responsabilidades</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Component</span><span lang="es">Componente</span></th><th><span lang="en">Does</span><span lang="es">Hace</span></th><th><span lang="en">Does not</span><span lang="es">No hace</span></th></tr></thead>
+        <tbody>
+          <tr><td><code>server.ts</code></td><td><span lang="en">Routing, token check, body read, X-Req counter, JSON response</span><span lang="es">Ruteo, chequeo de token, lectura del cuerpo, contador X-Req, respuesta JSON</span></td><td><span lang="en">Business rules</span><span lang="es">Reglas de negocio</span></td></tr>
+          <tr><td><code>protocol.ts</code></td><td><span lang="en">The ordered pipeline: parse, integrity, command, arity, amounts, effects</span><span lang="es">El pipeline ordenado: parseo, integridad, comando, aridad, montos, efectos</span></td><td><span lang="en">HTTP concerns, storage lifecycle</span><span lang="es">Temas HTTP, ciclo de vida del almacenamiento</span></td></tr>
+          <tr><td><code>control.ts</code></td><td><span lang="en">The checksum, as a pure function</span><span lang="es">El checksum, como función pura</span></td><td>—</td></tr>
+          <tr><td><code>store.ts</code></td><td><span lang="en">Accounts, operations, id sequences for one token</span><span lang="es">Cuentas, operaciones y secuencias de ids de un token</span></td><td><span lang="en">Validation</span><span lang="es">Validación</span></td></tr>
+          <tr><td><code>errors.ts</code> · <code>config.ts</code></td><td><span lang="en">Every error body verbatim; limits read from the environment</span><span lang="es">Cada cuerpo de error literal; límites leídos del entorno</span></td><td>—</td></tr>
+          <tr><td><code>tools/*</code></td><td><span lang="en">Probe the original, log, compute checksums, replay and diff</span><span lang="es">Sondear el original, registrar, calcular checksums, reproducir y comparar</span></td><td><span lang="en">Ship to production</span><span lang="es">Ir a producción</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 lang="en" style="margin-top:36px">Main flow: one request, end to end</h3>
+    <h3 lang="es" style="margin-top:36px">Flujo principal: un request de punta a punta</h3>
+    <ol class="pipeline">
+      <li><span class="n">01</span><span lang="en">Route and method (<code>POST /msg</code>, <code>GET /health</code>, <code>POST /__reset</code>)</span><span lang="es">Ruta y método (<code>POST /msg</code>, <code>GET /health</code>, <code>POST /__reset</code>)</span><span class="codes"><span class="chip s4">404 E404</span></span></li>
+      <li><span class="n">02</span><span lang="en">Bearer token — the trust boundary</span><span lang="es">Token Bearer: el límite de confianza</span><span class="codes"><span class="chip s4">401 E001</span></span></li>
+      <li><span class="n">03</span><span lang="en">Count the request (X-Req), parse JSON, require a string <code>m</code></span><span lang="es">Contar el request (X-Req), parsear JSON, exigir <code>m</code> string</span><span class="codes"><span class="chip s4">400 E100</span><span class="chip s4">400 E102</span></span></li>
+      <li><span class="n">04</span><span lang="en">Has a <code>;</code>, no empty segment</span><span lang="es">Tiene <code>;</code>, sin segmentos vacíos</span><span class="codes"><span class="chip s4">400 E103</span><span class="chip s4">400 E104</span></span></li>
+      <li class="shortcut"><span class="n">05</span><span lang="en"><code>PING</code> short-circuits: arity only, no checksum</span><span lang="es"><code>PING</code> se salta el resto: solo aridad, sin checksum</span><span class="codes"><span class="chip s2">200 pong</span><span class="chip s4">400 E302</span></span></li>
+      <li><span class="n">06</span><span lang="en">Checksum format, then value (exact text)</span><span lang="es">Formato del checksum, luego su valor (texto exacto)</span><span class="codes"><span class="chip s4">400 E201</span><span class="chip s4">400 E202</span></span></li>
+      <li><span class="n">07</span><span lang="en">Known command, then arity</span><span lang="es">Comando conocido, luego aridad</span><span class="codes"><span class="chip s4">400 E301</span><span class="chip s4">400 E302</span></span></li>
+      <li><span class="n">08</span><span lang="en">Amount 1…9,999,999,999 (no sign, no leading zero), then source ≠ destination</span><span lang="es">Monto 1…9.999.999.999 (sin signo ni cero inicial), luego origen ≠ destino</span><span class="codes"><span class="chip s4">400 E303</span><span class="chip s4">400 E304</span></span></li>
+      <li><span class="n">09</span><span lang="en">Account / operation exists (case-sensitive ids)</span><span lang="es">La cuenta / operación existe (ids sensibles a mayúsculas)</span><span class="codes"><span class="chip s4">404 E401</span><span class="chip s4">404 E402</span></span></li>
+      <li><span class="n">10</span><span lang="en">Locked source → limit (updates the lock counter) → balance</span><span lang="es">Origen bloqueado → límite (actualiza el contador) → saldo</span><span class="codes"><span class="chip s5">409 E510</span><span class="chip s5">422 E506</span><span class="chip s5">422 E507</span></span></li>
+      <li><span class="n">11</span><span lang="en">Apply the effect atomically, assign the next id, answer</span><span lang="es">Aplicar el efecto de forma atómica, asignar el siguiente id, responder</span><span class="codes"><span class="chip s2">200</span><span class="chip s2">201</span></span></li>
+    </ol>
+
+    <h3 lang="en" style="margin-top:36px">Contracts</h3><h3 lang="es" style="margin-top:36px">Contratos</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Interface</span><span lang="es">Interfaz</span></th><th><span lang="en">In → out</span><span lang="es">Entra → sale</span></th><th><span lang="en">Errors</span><span lang="es">Errores</span></th><th><span lang="en">Guarantees</span><span lang="es">Garantías</span></th></tr></thead>
+        <tbody>
+          <tr><td><code>POST /msg</code></td><td><code>{"m":"CMD;args;CTRL"}</code> → <span lang="en">command result</span><span lang="es">resultado del comando</span></td><td class="mono">E100–E510</td><td><span lang="en">First failing check wins; failed requests change no state except the lock counter on E506</span><span lang="es">Gana el primer chequeo que falla; un request fallido no cambia estado, salvo el contador de bloqueo en E506</span></td></tr>
+          <tr><td><code>POST /__reset</code></td><td>— → <code>{"ok":true}</code></td><td class="mono">E001, E404</td><td><span lang="en">Clears accounts, operations and id sequences for the token; X-Req keeps counting</span><span lang="es">Limpia cuentas, operaciones y secuencias de ids del token; X-Req sigue contando</span></td></tr>
+          <tr><td><code>GET /health</code></td><td>— → <code>{"ok":true}</code></td><td class="mono">E001, E404</td><td><span lang="en">Requires the token, like the original</span><span lang="es">Exige token, como el original</span></td></tr>
+          <tr><td><span lang="en">pipeline → store</span><span lang="es">pipeline → store</span></td><td><span lang="en">validated command → mutation + new id</span><span lang="es">comando validado → mutación + id nuevo</span></td><td>—</td><td><span lang="en">Effects run only after every check passed; ids are never consumed by failures</span><span lang="es">Los efectos corren solo tras pasar todos los chequeos; las fallas no consumen ids</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 lang="en" style="margin-top:36px">Domain model and invariants</h3>
+    <h3 lang="es" style="margin-top:36px">Modelo de dominio e invariantes</h3>
+    <div class="grid2">
+      <div class="card">
+        <p lang="en"><b>Account</b> <code>AC-0001…</code>: name, balance, consecutive limit failures, locked.<br><b>Operation</b> <code>OP-0001…</code>: deposit or transfer, amount, accounts, reversed.</p>
+        <p lang="es"><b>Cuenta</b> <code>AC-0001…</code>: nombre, saldo, rechazos consecutivos por límite, bloqueada.<br><b>Operación</b> <code>OP-0001…</code>: depósito o transferencia, monto, cuentas, anulada.</p>
+      </div>
+      <div class="card">
+        <ul lang="en"><li>Ids are sequential per token and restart after a reset</li><li>An operation is reversed at most once</li><li>A locked account can still receive funds and deposits</li><li>A transfer never moves more than the limit or the balance</li></ul>
+        <ul lang="es"><li>Los ids son secuenciales por token y reinician tras un reset</li><li>Una operación se anula como máximo una vez</li><li>Una cuenta bloqueada aún puede recibir fondos y depósitos</li><li>Una transferencia nunca mueve más que el límite o el saldo</li></ul>
+      </div>
+    </div>
+
+    <h3 lang="en" style="margin-top:36px">The checksum</h3><h3 lang="es" style="margin-top:36px">El checksum</h3>
+    <div class="grid2">
+      <div>
+        <div class="formula">control = 98 − (N mod 97)</div>
+        <p class="section-lead" style="margin-top:14px" lang="en">Found by noticing that changing one digit moved the control by −3 modulo 97, the signature of a mod-97 check like IBAN, then searching letter mappings until all valid examples matched. N = the message without its control, uppercased; A=1…Z=26, digits kept, other characters dropped, <code>00</code> appended. Compared as exact text.</p>
+        <p class="section-lead" style="margin-top:14px" lang="es">Lo encontré al notar que cambiar un dígito movía el control en −3 módulo 97, la firma de un check mod 97 como el IBAN, y luego probando mapeos de letras hasta que todos los ejemplos válidos coincidieron. N = el mensaje sin su control, en mayúsculas; A=1…Z=26, dígitos igual, otros caracteres eliminados, <code>00</code> al final. Se compara como texto exacto.</p>
+      </div>
+      <div class="card calc">
+        <label for="msg"><span lang="en">Try it: type a message without its control</span><span lang="es">Pruébalo: escribe un mensaje sin su control</span></label>
+        <input id="msg" value="ALTA;Lucia" autocomplete="off" spellcheck="false">
+        <div class="out" id="calc-out"></div>
+        <div class="steps" id="calc-steps"></div>
+      </div>
+    </div>
+
+    <h3 lang="en" style="margin-top:36px">Security, observability and recovery</h3>
+    <h3 lang="es" style="margin-top:36px">Seguridad, observabilidad y recuperación</h3>
+    <div class="grid3">
+      <div class="card"><h3 lang="en">Security</h3><h3 lang="es">Seguridad</h3><p lang="en">Team token in an environment variable, never in the repo; probe token in a gitignored file; constant 401 body for missing and wrong tokens; no outbound calls from the replacement.</p><p lang="es">Token del equipo en variable de entorno, nunca en el repo; token de sondeo en un archivo ignorado por git; mismo 401 para token ausente o inválido; el reemplazo no hace llamadas salientes.</p></div>
+      <div class="card"><h3 lang="en">Observability</h3><h3 lang="es">Observabilidad</h3><p lang="en">One structured log line per request: route, command, status, error code, latency. Health check for liveness. The diff harness is the correctness monitor.</p><p lang="es">Una línea de log estructurada por request: ruta, comando, status, código de error, latencia. Health check para liveness. El diff harness es el monitor de corrección.</p></div>
+      <div class="card"><h3 lang="en">Recovery</h3><h3 lang="es">Recuperación</h3><p lang="en">Crash → Railway restarts the process; state loss is harmless because tests reset first. Bad deploy → roll back to the previous Railway deployment.</p><p lang="es">Caída → Railway reinicia el proceso; perder el estado no afecta porque los tests hacen reset. Deploy defectuoso → rollback al deployment anterior en Railway.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 -->
+<section id="s6">
+  <div class="wrap">
+    <div class="eyebrow">06 · <span lang="en">Decisions and trade-offs</span><span lang="es">Decisiones y trade-offs</span></div>
+    <h2 lang="en">Each choice, the alternative and the cost we accept</h2>
+    <h2 lang="es">Cada elección, la alternativa y el costo que aceptamos</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Decision</span><span lang="es">Decisión</span></th><th><span lang="en">Discarded alternative</span><span lang="es">Alternativa descartada</span></th><th><span lang="en">Justification (requirement it serves)</span><span lang="es">Justificación (requisito que cumple)</span></th><th><span lang="en">Accepted cost</span><span lang="es">Costo aceptado</span></th></tr></thead>
+        <tbody>
+          <tr><td><span lang="en">Plain <code>node:http</code> + TypeScript</span><span lang="es"><code>node:http</code> puro + TypeScript</span></td><td>NestJS / Express</td><td><span lang="en">FR2, NFR1: frameworks answer unknown routes and bad JSON with their own bodies; we must control every byte</span><span lang="es">FR2, NFR1: los frameworks responden rutas inexistentes y JSON inválido con sus propios cuerpos; necesitamos controlar cada byte</span></td><td><span lang="en">Routing and body parsing by hand</span><span lang="es">Ruteo y parsing a mano</span></td></tr>
+          <tr><td><span lang="en">In-memory state, one store per token</span><span lang="es">Estado en memoria, un store por token</span></td><td>PostgreSQL</td><td><span lang="en">NFR2, FR1: one process, reset before every test, 5 s per step; a database adds latency and failure modes with no benefit</span><span lang="es">NFR2, FR1: un proceso, reset antes de cada test, 5 s por paso; una base de datos agrega latencia y modos de falla sin beneficio</span></td><td><span lang="en">State lost on restart; single instance only</span><span lang="es">Se pierde el estado al reiniciar; una sola instancia</span></td></tr>
+          <tr><td><span lang="en">Single event loop instead of locks</span><span lang="es">Event loop único en vez de locks</span></td><td><span lang="en">Mutexes / transactions</span><span lang="es">Mutex / transacciones</span></td><td><span lang="en">FR6: each handler is synchronous, so a request runs to completion without interleaving</span><span lang="es">FR6: cada handler es síncrono, así que un request corre completo sin intercalarse</span></td><td><span lang="en">Must keep handlers free of <code>await</code></span><span lang="es">Los handlers no pueden tener <code>await</code></span></td></tr>
+          <tr><td><span lang="en">Deterministic rules, no LLM in the path</span><span lang="es">Reglas deterministas, sin LLM</span></td><td><span lang="en">LLM fallback for unseen inputs</span><span lang="es">LLM de respaldo para entradas no vistas</span></td><td><span lang="en">NFR1, NFR2, NFR4: exact-match scoring punishes variance; an LLM adds seconds and cost</span><span lang="es">NFR1, NFR2, NFR4: la comparación exacta castiga la variación; un LLM agrega segundos y costo</span></td><td><span lang="en">Unseen inputs get a documented default</span><span lang="es">Las entradas no vistas reciben un default documentado</span></td></tr>
+          <tr><td><span lang="en">Checks as an ordered pipeline</span><span lang="es">Chequeos como pipeline ordenado</span></td><td><span lang="en">Nested if/else per command</span><span lang="es">if/else anidados por comando</span></td><td><span lang="en">FR4: the error order is part of the contract and must be easy to reorder when an experiment disagrees</span><span lang="es">FR4: el orden de errores es parte del contrato y debe ser fácil de reordenar si un experimento lo contradice</span></td><td><span lang="en">More structure up front</span><span lang="es">Más estructura de entrada</span></td></tr>
+          <tr><td><span lang="en">Business limits in configuration</span><span lang="es">Límites de negocio en configuración</span></td><td><span lang="en">Constants in code</span><span lang="es">Constantes en código</span></td><td><span lang="en">NFR6: the original changes; a limit change becomes an environment edit and a restart</span><span lang="es">NFR6: el original cambia; un cambio de límite se vuelve una edición de entorno y un reinicio</span></td><td><span lang="en">One more place to check during review</span><span lang="es">Un lugar más que revisar</span></td></tr>
+          <tr><td><span lang="en">The experiment log is the test suite</span><span lang="es">El log de experimentos es la suite de tests</span></td><td><span lang="en">Hand-written tests only</span><span lang="es">Solo tests escritos a mano</span></td><td><span lang="en">FR7, NFR1: every rule is proven against the oracle and replayed automatically</span><span lang="es">FR7, NFR1: cada regla se prueba contra el oráculo y se reproduce automáticamente</span></td><td><span lang="en">Covers only what was probed, so edges are probed on purpose</span><span lang="es">Cubre solo lo explorado, por eso los bordes se exploran a propósito</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 07 -->
+<section id="s7">
+  <div class="wrap">
+    <div class="eyebrow">07 · <span lang="en">Validation and measurement</span><span lang="es">Validación y medición</span></div>
+    <h2 lang="en">The evidence that the design meets the requirements</h2>
+    <h2 lang="es">La evidencia de que el diseño cumple los requisitos</h2>
+
+    <h3 lang="en">Metrics</h3><h3 lang="es">Métricas</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Metric</span><span lang="es">Métrica</span></th><th><span lang="en">Method and conditions</span><span lang="es">Método y condiciones</span></th><th>Baseline</th><th>Target</th><th><span lang="en">If missed</span><span lang="es">Si no se cumple</span></th></tr></thead>
+        <tbody>
+          <tr><td><span lang="en">Replay match rate (NFR1)</span><span lang="es">Coincidencia en replay (NFR1)</span></td><td><span lang="en"><code>diff.mjs</code> replays every logged sequence after a reset, official comparison rules</span><span lang="es"><code>diff.mjs</code> reproduce cada secuencia del log tras un reset, con las reglas oficiales</span></td><td><span lang="en">144/145 at 11:00 (the miss is the pre-change version)</span><span lang="es">144/145 a las 11:00 (la falla es la versión anterior al cambio)</span></td><td><span lang="en">100% of current-version steps</span><span lang="es">100% de los pasos de la versión vigente</span></td><td><span lang="en">Each mismatch becomes a new experiment before any code change</span><span lang="es">Cada diferencia se convierte en un experimento antes de tocar código</span></td></tr>
+          <tr><td><span lang="en">Hidden set pass rate</span><span lang="es">Tasa del set oculto</span></td><td><span lang="en">Validate the entrypoint in /evento; read /evento/resultados</span><span lang="es">Validar el entrypoint en /evento; leer /evento/resultados</span></td><td><span lang="en">First run after deploy</span><span lang="es">Primera corrida tras el deploy</span></td><td>≥ 95 / 100</td><td><span lang="en">Fuzz the area of the failing category; re-validate after each fix</span><span lang="es">Fuzzing del área que falla; re-validar tras cada corrección</span></td></tr>
+          <tr><td><span lang="en">Error coverage (FR4)</span><span lang="es">Cobertura de errores (FR4)</span></td><td><span lang="en">Each error code and each adjacent pair in the pipeline has at least one logged experiment</span><span lang="es">Cada código de error y cada par vecino del pipeline tiene al menos un experimento</span></td><td>17 / 17 <span lang="en">codes</span><span lang="es">códigos</span></td><td><span lang="en">17/17 codes, 10/10 order pairs</span><span lang="es">17/17 códigos, 10/10 pares de orden</span></td><td><span lang="en">Probe the missing pair</span><span lang="es">Sondear el par que falte</span></td></tr>
+          <tr><td><span lang="en">Specification accuracy (FR7)</span><span lang="es">Precisión de la spec (FR7)</span></td><td><span lang="en">Every behavior row cites log ids; a confirmed row needs ≥ 2 consistent ids</span><span lang="es">Cada fila cita ids del log; una fila confirmada necesita ≥ 2 ids consistentes</span></td><td>—</td><td><span lang="en">100% cited, 0 uncited claims</span><span lang="es">100% citadas, 0 afirmaciones sin cita</span></td><td><span lang="en">Downgrade to probable or remove</span><span lang="es">Bajar a probable o eliminar</span></td></tr>
+          <tr><td><span lang="en">Latency (NFR2)</span><span lang="es">Latencia (NFR2)</span></td><td><span lang="en">60 s burst at 10 req/s against the deployed URL, measured client-side</span><span lang="es">Ráfaga de 60 s a 10 req/s contra la URL desplegada, medida desde el cliente</span></td><td><span lang="en">Local: &lt; 5 ms</span><span lang="es">Local: &lt; 5 ms</span></td><td>p95 &lt; 50 ms, p99 &lt; 500 ms</td><td><span lang="en">Move region closer, check cold starts</span><span lang="es">Cambiar región, revisar arranques en frío</span></td></tr>
+          <tr><td><span lang="en">Drift detection (NFR6)</span><span lang="es">Detección de cambios (NFR6)</span></td><td><span lang="en">Replay the log against the original every 1–2 h until 19:30</span><span lang="es">Replay del log contra el original cada 1–2 h hasta las 19:30</span></td><td><span lang="en">1 change found (10:44)</span><span lang="es">1 cambio encontrado (10:44)</span></td><td><span lang="en">0 unexplained diffs at 19:30; fix in &lt; 15 min</span><span lang="es">0 diferencias sin explicar a las 19:30; corrección en &lt; 15 min</span></td><td><span lang="en">Incident playbook (section 08)</span><span lang="es">Playbook de incidente (sección 08)</span></td></tr>
+          <tr><td><span lang="en">Probe budget</span><span lang="es">Presupuesto de sondeo</span></td><td><span lang="en">Lines in <code>experimentos.jsonl</code></span><span lang="es">Líneas en <code>experimentos.jsonl</code></span></td><td><span lang="en">145 at 11:00</span><span lang="es">145 a las 11:00</span></td><td><span lang="en">&lt; 2,000 of 8,000</span><span lang="es">&lt; 2.000 de 8.000</span></td><td><span lang="en">Narrower, hypothesis-driven sequences</span><span lang="es">Secuencias más acotadas y guiadas por hipótesis</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 lang="en" style="margin-top:32px">Test strategy</h3><h3 lang="es" style="margin-top:32px">Estrategia de pruebas</h3>
+    <div class="grid2">
+      <div class="card"><h3 lang="en">Unit</h3><h3 lang="es">Unitarias</h3><p lang="en">Checksum against every valid and invalid example; amount parser at 0, 1, 9,999,999,999 and 10,000,000,000; lock counter transitions (fail, fail, success, fail×3).</p><p lang="es">Checksum contra cada ejemplo válido e inválido; parser de montos en 0, 1, 9.999.999.999 y 10.000.000.000; transiciones del contador de bloqueo (falla, falla, éxito, falla×3).</p></div>
+      <div class="card"><h3 lang="en">Integration</h3><h3 lang="es">Integración</h3><p lang="en">Pipeline order: one test per adjacent pair of checks, each request carrying both faults (e.g. bad amount + same account → E303).</p><p lang="es">Orden del pipeline: un test por par vecino de chequeos, cada request con ambas fallas (ej. monto inválido + misma cuenta → E303).</p></div>
+      <div class="card"><h3 lang="en">End to end</h3><h3 lang="es">Extremo a extremo</h3><p lang="en">The diff harness replays the 20 public examples and every logged sequence against the local and the deployed replacement — the same shape as the hidden set.</p><p lang="es">El diff harness reproduce los 20 ejemplos públicos y cada secuencia del log contra el reemplazo local y el desplegado, con la misma forma que el set oculto.</p></div>
+      <div class="card"><h3 lang="en">Non-functional</h3><h3 lang="es">No funcionales</h3><p lang="en">Latency burst; restart then health check; requests without and with a wrong token on every route; a 1 MB body.</p><p lang="es">Ráfaga de latencia; reinicio y luego health check; requests sin token y con token inválido en cada ruta; un cuerpo de 1 MB.</p></div>
+    </div>
+
+    <h3 lang="en" style="margin-top:32px">Acceptance criteria</h3><h3 lang="es" style="margin-top:32px">Criterios de aceptación</h3>
+    <ul lang="en" class="checks"><li>All 20 public examples pass in order after a reset</li><li>All current-version logged sequences pass, locally and deployed</li><li>The replacement makes zero outbound requests (verified in code review and logs)</li><li>Health is green at the public URL from 20:00</li><li>Every spec row cites at least one log id, with its confidence</li></ul>
+    <ul lang="es" class="checks"><li>Los 20 ejemplos públicos pasan en orden tras un reset</li><li>Todas las secuencias de la versión vigente pasan, en local y desplegado</li><li>El reemplazo hace cero requests salientes (verificado en revisión de código y logs)</li><li>Health en verde en la URL pública desde las 20:00</li><li>Cada fila de la spec cita al menos un id del log, con su confianza</li></ul>
+  </div>
+</section>
+
+<!-- 08 -->
+<section id="s8">
+  <div class="wrap">
+    <div class="eyebrow">08 · <span lang="en">Implementation plan and open questions</span><span lang="es">Plan de implementación y preguntas abiertas</span></div>
+    <h2 lang="en">Order of work, milestones and what is still unknown</h2>
+    <h2 lang="es">Orden de trabajo, hitos y lo que aún no sabemos</h2>
+    <div class="timeline">
+      <div class="ev done"><time>10:30 – 11:00</time><div lang="en">Exploration tooling, 145 experiments, protocol decoded, first replacement (144/145)</div><div lang="es">Herramientas de exploración, 145 experimentos, protocolo descifrado, primer reemplazo (144/145)</div></div>
+      <div class="ev"><time>12:00</time><div lang="en">Design document delivered</div><div lang="es">Documento de diseño entregado</div></div>
+      <div class="ev"><time>13:30</time><div lang="en">Open questions probed; unit and order tests in place; local replay at 100%</div><div lang="es">Preguntas abiertas sondeadas; tests unitarios y de orden listos; replay local al 100%</div></div>
+      <div class="ev"><time>15:00</time><div lang="en">Deployed on Railway (1 replica); first validation in /evento</div><div lang="es">Desplegado en Railway (1 réplica); primera validación en /evento</div></div>
+      <div class="ev change"><time>15:30</time><div lang="en">Incident: stop feature work → reproduce with the probe → log evidence → change one rule or config → replay everything → redeploy → write the timeline</div><div lang="es">Incidente: parar features → reproducir con el probe → registrar evidencia → cambiar una regla o config → replay completo → redeploy → escribir la línea de tiempo</div></div>
+      <div class="ev"><time>18:30</time><div lang="en">Specification complete; drift check against the original</div><div lang="es">Especificación completa; chequeo de cambios contra el original</div></div>
+      <div class="ev"><time>19:30</time><div lang="en">Final drift check, 2-minute video, submission</div><div lang="es">Último chequeo de cambios, video de 2 minutos, entrega</div></div>
+    </div>
+
+    <h3 lang="en" style="margin-top:32px">Changes detected during the day</h3><h3 lang="es" style="margin-top:32px">Cambios detectados durante el día</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">When</span><span lang="es">Cuándo</span></th><th><span lang="en">What changed</span><span lang="es">Qué cambió</span></th><th><span lang="en">How it was detected</span><span lang="es">Cómo se detectó</span></th></tr></thead>
+        <tbody>
+          <tr><td class="mono">10:36 → 10:44</td><td><span lang="en">A 100,001 transfer went from accepted to rejected (E506): the limit is now a fixed 100,000</span><span lang="es">Una transferencia de 100.001 pasó de aceptada a rechazada (E506): el límite ahora es fijo en 100.000</span></td><td><span lang="en">#64 contradicted #74; re-probed under the identical conditions in #125</span><span lang="es">#64 contradijo a #74; se re-probó en condiciones idénticas en #125</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 lang="en" style="margin-top:32px">Open questions to validate</h3><h3 lang="es" style="margin-top:32px">Preguntas abiertas por validar</h3>
+    <ul lang="en"><li>Does an E507 between two E506 reset the lock counter?</li><li>Does a lock expire with time or with any other command?</li><li>Body size limit, duplicate JSON keys, non-UTF-8 bytes</li><li>Query strings, <code>HEAD</code> and <code>OPTIONS</code> on known routes</li><li>What happens after <code>AC-9999</code> or <code>OP-9999</code>?</li><li>Will the limit or other rules change again before 20:00?</li></ul>
+    <ul lang="es"><li>¿Un E507 entre dos E506 reinicia el contador de bloqueo?</li><li>¿El bloqueo expira con el tiempo o con algún otro comando?</li><li>Límite de tamaño del cuerpo, claves JSON duplicadas, bytes no UTF-8</li><li>Query strings, <code>HEAD</code> y <code>OPTIONS</code> en rutas conocidas</li><li>¿Qué pasa después de <code>AC-9999</code> u <code>OP-9999</code>?</li><li>¿Cambiará otra vez el límite u otra regla antes de las 20:00?</li></ul>
+
+    <h3 lang="en" style="margin-top:32px">Inherited risks a new client should not copy</h3>
+    <h3 lang="es" style="margin-top:32px">Riesgos heredados que un cliente nuevo no debería copiar</h3>
+    <div class="grid2" style="margin-top:12px">
+      <div class="card"><p lang="en">Reversals ignore balances and can leave an account negative. Fix: reject a reversal that would overdraw, or record a debt.</p><p lang="es">Las anulaciones ignoran el saldo y pueden dejar una cuenta en negativo. Solución: rechazar la anulación que sobregire o registrar una deuda.</p></div>
+      <div class="card"><p lang="en">No idempotency key: a retried DEPOSITO or TRANSFER applies twice. Fix: a client-supplied request id.</p><p lang="es">Sin clave de idempotencia: un DEPOSITO o TRANSFER reintentado se aplica dos veces. Solución: un id de request enviado por el cliente.</p></div>
+      <div class="card"><p lang="en">The mod-97 checksum detects typos, not tampering: anyone can compute it. Fix: an HMAC with a shared secret.</p><p lang="es">El checksum mod 97 detecta errores de digitación, no manipulación: cualquiera lo calcula. Solución: un HMAC con secreto compartido.</p></div>
+      <div class="card"><p lang="en"><code>PING</code> skips integrity; inconsistent field names (<code>cuentaId</code> / <code>cuenta_id</code>) and a typo (<code>recieved</code>) are part of the contract. Fix: a versioned v2 API.</p><p lang="es"><code>PING</code> se salta la integridad; nombres inconsistentes (<code>cuentaId</code> / <code>cuenta_id</code>) y un error de tipeo (<code>recieved</code>) son parte del contrato. Solución: una API v2 versionada.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- LOG -->
+<section id="log">
+  <div class="wrap">
+    <div class="eyebrow"><span lang="en">Appendix · Evidence</span><span lang="es">Anexo · Evidencia</span></div>
+    <h2 lang="en">Every request sent to the original</h2>
+    <h2 lang="es">Cada request enviado al original</h2>
+    <p class="section-lead" lang="en">The full experiment log: the hypothesis behind each request, what the original answered and what was learned. Sequences start from a reset.</p>
+    <p class="section-lead" lang="es">El log completo: la hipótesis detrás de cada request, lo que respondió el original y lo que se aprendió. Cada secuencia empieza tras un reset.</p>
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Search · Buscar (E506, TRANSFER, límite…)">
+      <select id="seq"><option value="">All sequences · Todas</option></select>
+      <select id="status"><option value="">Any status · Cualquier status</option></select>
+    </div>
+    <div class="table-wrap">
+      <table id="log">
+        <thead><tr><th>id</th><th><span lang="en">Hypothesis</span><span lang="es">Hipótesis</span></th><th>Request</th><th>Status</th><th><span lang="en">Response</span><span lang="es">Respuesta</span></th><th><span lang="en">Conclusion</span><span lang="es">Conclusión</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span lang="en">Built by Jerónimo Rodríguez during the Frontier hackathon (Lab10), 10 October 2026.</span>
+    <span lang="es">Construido por Jerónimo Rodríguez durante el hackathon Frontier (Lab10), 10 de octubre de 2026.</span>
+  </div>
+</footer>
+
+<script>
+// language + theme (remembered per browser; storage may be unavailable)
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+const root = document.documentElement;
+function setLang(l){ root.dataset.lang = l; root.lang = l; document.getElementById('btn-en').setAttribute('aria-pressed', l==='en'); document.getElementById('btn-es').setAttribute('aria-pressed', l==='es'); store.set('lang', l); }
+setLang(store.get('lang') || ((navigator.language || '').startsWith('es') ? 'es' : 'en'));
+document.getElementById('btn-en').onclick = () => setLang('en');
+document.getElementById('btn-es').onclick = () => setLang('es');
+const savedTheme = store.get('theme'); if (savedTheme) root.dataset.theme = savedTheme;
+document.getElementById('btn-theme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', root.dataset.theme);
+};
+
+// checksum calculator (same algorithm as the replacement)
+function digitsOf(body){ let d=''; for (const ch of body.toUpperCase()){ if (ch>='0'&&ch<='9') d+=ch; else if (ch>='A'&&ch<='Z') d+=String(ch.charCodeAt(0)-64); } return d+'00'; }
+function control(body){ let r=0; for (const x of digitsOf(body)) r=(r*10+Number(x))%97; return 98-r; }
+const msg = document.getElementById('msg');
+function renderCalc(){
+  const v = msg.value; const out = document.getElementById('calc-out'); const st = document.getElementById('calc-steps');
+  if (!v){ out.textContent=''; st.textContent=''; return; }
+  const c = control(v); const n = digitsOf(v);
+  out.innerHTML = ''; const a = document.createElement('span'); a.textContent = v + ';'; const b = document.createElement('span'); b.className='ok'; b.textContent = c; out.append(a,b);
+  st.textContent = `N = ${n.length > 60 ? n.slice(0,60)+'…' : n} → N mod 97 = ${98-c} → 98 − ${98-c} = ${c}`;
+}
+msg.addEventListener('input', renderCalc); renderCalc();
+
+// experiment log explorer
+const tbody = document.querySelector('#log tbody');
+let rows = [], bad = [];
+const fmt = v => typeof v === 'string' ? v : JSON.stringify(v);
+function cls(s){ return s < 300 ? 's2' : s < 500 && s !== 409 && s !== 422 ? 's4' : 's5'; }
+function td(text, className, lang){ const el=document.createElement('td'); if(className) el.className=className; if(lang) el.lang=lang; el.textContent=text; return el; }
+function render(){
+  const q = document.getElementById('q').value.toLowerCase(), seq = document.getElementById('seq').value, status = document.getElementById('status').value;
+  tbody.textContent = '';
+  const shown = rows.filter(r => (!seq || r.seq===seq) && (!status || String(r.status)===status) && (!q || JSON.stringify(r).toLowerCase().includes(q)));
+  for (const r of shown){
+    const tr=document.createElement('tr');
+    const req = [r.method, r.path].filter(Boolean).join(' ') + (r.auth===false?' (no token)':r.token?' (other token)':'');
+    tr.append(td(r.id), td(r.hipotesis||''), td((req? req+' ':'') + fmt(r.request), 'req'));
+    const s=document.createElement('td'); const chip=document.createElement('span'); chip.className='chip '+cls(r.status); chip.textContent=r.status; s.append(chip); tr.append(s);
+    tr.append(td(fmt(r.response),'res'), td(r.conclusion||'','concl'));
+    tbody.append(tr);
+  }
+  document.getElementById('count').textContent = `${shown.length} / ${rows.length}` + (bad.length ? ` · skipped malformed lines · líneas inválidas omitidas: ${bad.join(', ')}` : '');
+}
+fetch('/docs/data/experimentos.jsonl').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }).then(t => {
+  // JSON Lines: tolerate BOM, CRLF and blank lines; skip malformed lines and report their numbers
+  t.replace(/^\uFEFF/, '').split(/\r?\n/).forEach((l, i) => {
+    if (!l.trim()) return;
+    try { const o = JSON.parse(l); if (o && typeof o === 'object' && !Array.isArray(o)) rows.push(o); else bad.push(i + 1); } catch { bad.push(i + 1); }
+  });
+  document.getElementById('st-req').textContent = rows.length;
+  const seqs = [...new Set(rows.map(r => r.seq))]; document.getElementById('st-seq').textContent = seqs.length;
+  for (const s of seqs){ const o=document.createElement('option'); o.value=o.textContent=s; document.getElementById('seq').append(o); }
+  for (const s of [...new Set(rows.map(r => r.status))].sort()){ const o=document.createElement('option'); o.value=o.textContent=s; document.getElementById('status').append(o); }
+  render();
+}).catch(e => { document.getElementById('count').textContent = `Log unavailable · Log no disponible: /docs/data/experimentos.jsonl (${e.message})`; });
+['q','seq','status'].forEach(id => document.getElementById(id).addEventListener('input', render));
+</script>
+
+</body>
+</html>
