@@ -269,5 +269,15 @@
   "268": "El servicio sigue vivo tras los intentos de confirmación",
   "269": "HALT con 1 argumento → 409 E520 (igual que #259)",
   "270": "Reenviar el mismo HALT → 409 E520 otra vez: el reenvío idéntico no confirma",
-  "271": "El servicio responde tras el reenvío: no se encontró la forma de confirmar HALT; el camino confirmado queda como supuesto"
+  "271": "El servicio responde tras el reenvío: no se encontró la forma de confirmar HALT; el camino confirmado queda como supuesto",
+  "272": "Setup",
+  "273": "Setup",
+  "274": "Setup: saldo 500000 en AC-0001",
+  "275": "Rechazo consecutivo 1 (E506)",
+  "276": "Rechazo consecutivo 2 (E506)",
+  "277": "Rechazo consecutivo 3 (E506): la cuenta queda bloqueada",
+  "278": "Monto válido (100) → 409 E510: la cuenta está bloqueada",
+  "279": "Una cuenta bloqueada acepta depósitos (OP-0002)",
+  "280": "TRANSFER de 100 desde la cuenta que estaba bloqueada → 200 (OP-0003): un DEPOSITO exitoso levanta el bloqueo, no solo reinicia el contador",
+  "281": "Saldo 500000 (500000 + 100 − 100): la transferencia de #280 se aplicó"
 }

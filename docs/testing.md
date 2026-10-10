@@ -6,7 +6,7 @@ The replacement is scored by exact comparison with the original, so the main tes
 |---|---|---|---|
 | Replay of the log | Same status and body as the original on every logged sequence | `node tools/diff.mjs` | In place: every current-version sequence passes; s03 is skipped as superseded |
 | Public examples | The 20 examples of `pruebas/ejemplos.jsonl` pass in order after a reset | `node tools/diff.mjs --examples` | In place |
-| Unit tests | Checksum, amount parser, limit, lock counter, reversals, ids | `npm --prefix service test` | In place: 78 tests |
+| Unit tests | Checksum, amount parser, limit, lock counter, reversals, ids | `npm --prefix service test` | In place: 79 tests |
 | Error-order tests | One test per pair of checks, with both faults in one message | `npm --prefix service test` | In place |
 | Drift check | The original still answers as logged | New logged probe of an existing experiment | Manual |
 | CI | Build and replay on every push | Workflow not adapted yet | Planned |
@@ -58,7 +58,7 @@ Experiment 64 was recorded at 10:36, before the original changed its transfer li
 - `ANULA`: idempotent, reverses transfers on both accounts, can leave a negative balance.
 - Ids: failed operations consume none, and `ANULA` creates none.
 - `PING` skips the checksum but not the arity.
-- Deposit: a successful deposit resets the rejection count (#175–179).
+- Deposit: a successful deposit resets the rejection count (#175–179) and lifts an existing lock (#272–281).
 - `NOTAS` and `HALT`: the note and the E520 guard are compared with the logged responses (#255, #259); wrong arity is E302; resending `HALT` does not confirm it.
 - E301 `sugerencia`: `ALTO` → `ALTA`, `HELP` → `HALT`, and none at distance 3 or more (#252, #201, #182).
 

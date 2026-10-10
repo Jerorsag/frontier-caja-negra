@@ -269,3 +269,13 @@
 {"id":269,"seq":"s11","step":{"hipotesis":"Hipótesis reenvío idéntico: 1.er HALT (pide confirmación)","request":{"m":"HALT;AC-0001;82"}},"status":409,"rawText":"{\"error\":\"E520\",\"mensaje\":\"operación destructiva: detiene el servicio; reenvía con confirmación\"}"}
 {"id":270,"seq":"s11","step":{"hipotesis":"Reenvío idéntico: 2.º HALT igual (¿confirma y detiene?)","request":{"m":"HALT;AC-0001;82"}},"status":409,"rawText":"{\"error\":\"E520\",\"mensaje\":\"operación destructiva: detiene el servicio; reenvía con confirmación\"}"}
 {"id":271,"seq":"s11","step":{"hipotesis":"¿El servicio responde después del reenvío?","request":{"m":"PING;1"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":272,"seq":"s12","step":{"hipotesis":"Setup cuenta A","request":{"m":"ALTA;A;62"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":273,"seq":"s12","step":{"hipotesis":"Setup cuenta B","request":{"m":"ALTA;B;59"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":274,"seq":"s12","step":{"hipotesis":"Fondear A con 500000","request":{"m":"DEPOSITO;AC-0001;500000;90"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":275,"seq":"s12","step":{"hipotesis":"Rechazo por límite 1 (E506)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":276,"seq":"s12","step":{"hipotesis":"Rechazo por límite 2 (E506)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":277,"seq":"s12","step":{"hipotesis":"Rechazo por límite 3 (E506) → bloquea","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":278,"seq":"s12","step":{"hipotesis":"Confirmar bloqueo (E510)","request":{"m":"TRANSFER;AC-0001;AC-0002;100;24"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":279,"seq":"s12","step":{"hipotesis":"Depósito a cuenta bloqueada (se acepta, reinicia contador)","request":{"m":"DEPOSITO;AC-0001;100;82"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
+{"id":280,"seq":"s12","step":{"hipotesis":"CLAVE: ¿transferir tras el depósito? 200 = el depósito LEVANTA el bloqueo; E510 = el bloqueo persiste","request":{"m":"TRANSFER;AC-0001;AC-0002;100;24"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0003\"}"}
+{"id":281,"seq":"s12","step":{"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":500000}"}

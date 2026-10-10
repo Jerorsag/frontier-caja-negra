@@ -38,7 +38,8 @@ Confidence levels: **confirmed** = probed and repeated; **probable** = seen once
 | Transfer limit is a fixed 100,000 per transfer (inclusive) | confirmed | 74–75, 99–101, 125–126 |
 | 3 consecutive rejected transfers (E506 limit or E507 insufficient funds) lock the source; a success resets the count | confirmed | 99–105, 125–134, 149–153 |
 | The limit changed between 10:36 and 10:44 | probable | 64 vs 125 |
-| A lock never expires within a session | assumed | — |
+| A successful deposit resets the rejection count and lifts an existing lock | confirmed | 175–179, 278–281 |
+| A lock does not expire with time or with other commands: only a deposit or a reset lifts it | assumed | — |
 | Query strings are ignored when matching routes | confirmed | 160–161 |
 
 ## 04 · Risks and hard cases
@@ -154,7 +155,7 @@ Invariants:
 
 - Ids are sequential per token and restart after a reset.
 - An operation is reversed at most once.
-- A locked account can still receive funds and deposits.
+- A locked account can still receive funds and deposits; a successful deposit lifts the lock (278–281).
 - A transfer never moves more than the limit or the balance.
 
 ### The checksum

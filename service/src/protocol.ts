@@ -141,6 +141,7 @@ function deposito(store: Store, id: string, rawAmount: string): Reply {
   if (!acc) return E.unknownAccount;
   acc.balance += amount; // allowed on locked accounts
   acc.consecutiveRejections = 0; // exp. 175-179: a successful deposit resets the rejection count
+  acc.locked = false; // exp. 278-280: and lifts an existing lock
   const opId = store.nextOperationId();
   store.operations.set(opId, { id: opId, kind: 'DEPOSITO', account: id, amount, reversed: false });
   return received(opId);

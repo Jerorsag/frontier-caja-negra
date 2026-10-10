@@ -1,6 +1,6 @@
 # Experiment log (readable view)
 
-Generated from `experimentos.jsonl` — 271 requests in 11 sequences. Each sequence starts after `POST /__reset`.
+Generated from `experimentos.jsonl` — 281 requests in 12 sequences. Each sequence starts after `POST /__reset`.
 
 ## s01
 
@@ -327,3 +327,18 @@ Generated from `experimentos.jsonl` — 271 requests in 11 sequences. Each seque
 | 269 | Hipótesis reenvío idéntico: 1.er HALT (pide confirmación) | `{"m":"HALT;AC-0001;82"}` | 409 | `{"error":"E520","mensaje":"operación destructiva: detiene el servicio; reenvía con confirmación"}` | HALT con 1 argumento → 409 E520 (igual que #259) |
 | 270 | Reenvío idéntico: 2.º HALT igual (¿confirma y detiene?) | `{"m":"HALT;AC-0001;82"}` | 409 | `{"error":"E520","mensaje":"operación destructiva: detiene el servicio; reenvía con confirmación"}` | Reenviar el mismo HALT → 409 E520 otra vez: el reenvío idéntico no confirma |
 | 271 | ¿El servicio responde después del reenvío? | `{"m":"PING;1"}` | 200 | `{"pong":true}` | El servicio responde tras el reenvío: no se encontró la forma de confirmar HALT; el camino confirmado queda como supuesto |
+
+## s12
+
+| id | Hypothesis | Request | Status | Response | Conclusion |
+|---|---|---|---|---|---|
+| 272 | Setup cuenta A | `{"m":"ALTA;A;62"}` | 201 | `{"cuentaId":"AC-0001"}` | Setup |
+| 273 | Setup cuenta B | `{"m":"ALTA;B;59"}` | 201 | `{"cuentaId":"AC-0002"}` | Setup |
+| 274 | Fondear A con 500000 | `{"m":"DEPOSITO;AC-0001;500000;90"}` | 200 | `{"status":"recieved","operacionId":"OP-0001"}` | Setup: saldo 500000 en AC-0001 |
+| 275 | Rechazo por límite 1 (E506) | `{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}` | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Rechazo consecutivo 1 (E506) |
+| 276 | Rechazo por límite 2 (E506) | `{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}` | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Rechazo consecutivo 2 (E506) |
+| 277 | Rechazo por límite 3 (E506) → bloquea | `{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}` | 422 | `{"error":"E506","mensaje":"límite excedido"}` | Rechazo consecutivo 3 (E506): la cuenta queda bloqueada |
+| 278 | Confirmar bloqueo (E510) | `{"m":"TRANSFER;AC-0001;AC-0002;100;24"}` | 409 | `{"error":"E510","mensaje":"cuenta bloqueada"}` | Monto válido (100) → 409 E510: la cuenta está bloqueada |
+| 279 | Depósito a cuenta bloqueada (se acepta, reinicia contador) | `{"m":"DEPOSITO;AC-0001;100;82"}` | 200 | `{"status":"recieved","operacionId":"OP-0002"}` | Una cuenta bloqueada acepta depósitos (OP-0002) |
+| 280 | CLAVE: ¿transferir tras el depósito? 200 = el depósito LEVANTA el bloqueo; E510 = el bloqueo persiste | `{"m":"TRANSFER;AC-0001;AC-0002;100;24"}` | 200 | `{"status":"recieved","operacionId":"OP-0003"}` | TRANSFER de 100 desde la cuenta que estaba bloqueada → 200 (OP-0003): un DEPOSITO exitoso levanta el bloqueo, no solo reinicia el contador |
+| 281 | Saldo final de A | `{"m":"CONSULTA;AC-0001;14"}` | 200 | `{"cuenta_id":"AC-0001","saldo":500000}` | Saldo 500000 (500000 + 100 − 100): la transferencia de #280 se aplicó |

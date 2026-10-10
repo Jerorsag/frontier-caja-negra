@@ -246,6 +246,14 @@ test('a successful deposit resets the rejection count: E506, E506, DEPOSITO, E50
   assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;1'), received('OP-0003'));
 });
 
+test('a successful deposit lifts an existing lock: 3× E506, E510, DEPOSITO, then a valid transfer is OK (#272–281)', () => {
+  const s = lockedSource(500000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100'), E.accountLocked); // #278
+  assert.deepEqual(msg(s, 'DEPOSITO;AC-0001;100'), received('OP-0002')); // #279
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100'), received('OP-0003')); // #280
+  assert.equal(balance(s, 'AC-0001'), 500000); // #281
+});
+
 test('three consecutive E507 alone lock the source (#168–171)', () => {
   const s = twoAccounts(1000);
   for (let i = 0; i < 3; i++) assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;5000'), E.insufficientFunds);

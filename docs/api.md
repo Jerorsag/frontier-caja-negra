@@ -102,7 +102,7 @@ The control is compared as exact text: `3` is valid where `03` is not. Evidence:
 
 - Adds the amount to the balance and returns the next operation id: `OP-` plus a 4-digit sequence per token. Evidence: 58, 61.
 - There is no deposit limit other than the amount format. Evidence: 58, 142.
-- A locked account accepts deposits. Evidence: 135.
+- A locked account accepts deposits, and a successful deposit lifts the lock: the next valid transfer from the account succeeds. Evidence: 135, 278–281.
 - A repeated deposit applies twice: there is no idempotency key.
 
 ### TRANSFER
@@ -111,10 +111,10 @@ The control is compared as exact text: `3` is valid where `03` is not. Evidence:
 - Limit: an amount greater than 100,000 is 422 E506. Exactly 100,000 is accepted. The limit does not depend on the balance. Evidence: 74, 75, 125, 126.
 - Lock: 3 consecutive rejected transfers from the same source lock it. A rejection is an E506 (limit) or an E507 (insufficient funds); three E507 alone are enough. From then on every transfer from it is 409 E510, even with a valid amount. Evidence: 99–103, 127–134, 149–153, 168–171.
 - The count is reset by a successful transfer from the account and by a successful deposit into it. Evidence: 127–130, 175–179.
-- Whether a deposit also unlocks an account that is already locked was not probed; the replacement keeps it locked. **Assumed.**
-- The lock applies to the source only: a locked account still receives transfers. Evidence: 136.
+- A successful deposit into a locked account lifts the lock (confirmed): locked (278), deposit (279), then a transfer of a valid amount is accepted (280) and the balance matches (281).
+- The lock applies to the source only: a locked account still receives transfers. **Assumed:** experiment 136 was meant to show it, but it ran after the deposit of 135, which had already lifted the lock.
 - Rejected transfers move no money and consume no operation id. Evidence: 111, 112.
-- A lock does not expire within a session. **Assumed.**
+- Apart from a deposit and `POST /__reset`, nothing else is known to lift a lock; it does not expire with time or with other commands. **Assumed.**
 
 ### ANULA
 
@@ -228,12 +228,14 @@ The `mensaje` keeps its trailing space with and without a suggestion, whatever t
 | E303 (amount) | E304 (same account) | 88 |
 | E303 (amount) | E401 (account) | 86 |
 | E304 (same account) | E401 (account) | 87 |
-| E303, E304, E401 | E510 (lock) | 139, 137, 138 |
+| E303, E304, E401 | E510 (lock) | **assumed** (see below) |
 | E510 (lock) | E506 (limit) | 104 |
 | E510 (lock) | E507 (balance) | 105 |
 | E506 (limit) | E507 (balance) | 108 |
 
 Arity (E302) is evaluated before the amount (154, 172), before same account (173) and before a missing account (155, 174).
+
+E303, E304 and E401 before E510 is **assumed**. Experiments 137–139 were meant to pin it, but they ran after the deposit of 135, and a deposit lifts the lock (278–280), so the account was no longer locked. The replacement keeps that order, which follows the order of `service/src/protocol.ts`.
 
 ## Changes during the day
 

@@ -1,0 +1,15 @@
+{
+  "seq": "s12",
+  "steps": [
+    {"hipotesis":"Setup cuenta A","request":{"m":"ALTA;A;62"}},
+    {"hipotesis":"Setup cuenta B","request":{"m":"ALTA;B;59"}},
+    {"hipotesis":"Fondear A con 500000","request":{"m":"DEPOSITO;AC-0001;500000;90"}},
+    {"hipotesis":"Rechazo por límite 1 (E506)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},
+    {"hipotesis":"Rechazo por límite 2 (E506)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},
+    {"hipotesis":"Rechazo por límite 3 (E506) → bloquea","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},
+    {"hipotesis":"Confirmar bloqueo (E510)","request":{"m":"TRANSFER;AC-0001;AC-0002;100;24"}},
+    {"hipotesis":"Depósito a cuenta bloqueada (se acepta, reinicia contador)","request":{"m":"DEPOSITO;AC-0001;100;82"}},
+    {"hipotesis":"CLAVE: ¿transferir tras el depósito? 200 = el depósito LEVANTA el bloqueo; E510 = el bloqueo persiste","request":{"m":"TRANSFER;AC-0001;AC-0002;100;24"}},
+    {"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}}
+  ]
+}

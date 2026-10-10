@@ -300,7 +300,8 @@ td.mono{white-space:nowrap}
           <tr><td><span lang="en">Transfer limit is a fixed 100,000 per transfer (inclusive)</span><span lang="es">El límite es fijo: 100.000 por transferencia (inclusivo)</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">74–75, 99–101, 125–126</td></tr>
           <tr><td><span lang="en">3 consecutive rejected transfers (E506 limit or E507 insufficient funds) lock the source; a success resets the count</span><span lang="es">3 transferencias rechazadas consecutivas (E506 por límite o E507 por saldo insuficiente) bloquean el origen; un éxito reinicia la cuenta</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">99–105, 125–134, 149–153</td></tr>
           <tr><td><span lang="en">The limit changed between 10:36 and 10:44</span><span lang="es">El límite cambió entre las 10:36 y las 10:44</span></td><td><span class="chip s4">probable</span></td><td class="mono">64 vs 125</td></tr>
-          <tr><td><span lang="en">A lock never expires within a session</span><span lang="es">Un bloqueo no expira dentro de una sesión</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
+          <tr><td><span lang="en">A successful deposit resets the rejection count and lifts an existing lock</span><span lang="es">Un depósito exitoso reinicia el contador de rechazos y levanta un bloqueo existente</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">175–179, 278–281</td></tr>
+          <tr><td><span lang="en">A lock does not expire with time or with other commands: only a deposit or a reset lifts it</span><span lang="es">Un bloqueo no expira con el tiempo ni con otros comandos: solo un depósito o un reset lo levanta</span></td><td><span class="chip s5">assumed</span></td><td>—</td></tr>
           <tr><td><span lang="en">Query strings are ignored when matching routes</span><span lang="es">Los query strings se ignoran al comparar rutas</span></td><td><span class="chip s2">confirmed</span></td><td class="mono">160–161</td></tr>
         </tbody>
       </table>
@@ -478,8 +479,8 @@ td.mono{white-space:nowrap}
         <p lang="es"><b>Cuenta</b> <code>AC-0001…</code>: nombre, saldo, transferencias rechazadas consecutivas, bloqueada.<br><b>Operación</b> <code>OP-0001…</code>: depósito o transferencia, monto, cuentas, anulada.</p>
       </div>
       <div class="card">
-        <ul lang="en"><li>Ids are sequential per token and restart after a reset</li><li>An operation is reversed at most once</li><li>A locked account can still receive funds and deposits</li><li>A transfer never moves more than the limit or the balance</li></ul>
-        <ul lang="es"><li>Los ids son secuenciales por token y reinician tras un reset</li><li>Una operación se anula como máximo una vez</li><li>Una cuenta bloqueada aún puede recibir fondos y depósitos</li><li>Una transferencia nunca mueve más que el límite o el saldo</li></ul>
+        <ul lang="en"><li>Ids are sequential per token and restart after a reset</li><li>An operation is reversed at most once</li><li>A locked account can still receive funds and deposits; a successful deposit lifts the lock</li><li>A transfer never moves more than the limit or the balance</li></ul>
+        <ul lang="es"><li>Los ids son secuenciales por token y reinician tras un reset</li><li>Una operación se anula como máximo una vez</li><li>Una cuenta bloqueada aún puede recibir fondos y depósitos; un depósito exitoso levanta el bloqueo</li><li>Una transferencia nunca mueve más que el límite o el saldo</li></ul>
       </div>
     </div>
 
