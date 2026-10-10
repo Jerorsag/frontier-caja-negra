@@ -1,0 +1,145 @@
+{"id":1,"seq":"s01","step":{"hipotesis":"El ejemplo del README responde y muestra el formato base","request":{"m":"PING;64"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":2,"seq":"s01","step":{"hipotesis":"Repetir el mismo mensaje da la misma respuesta (sin estado)","request":{"m":"PING;64"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":3,"seq":"s01","step":{"hipotesis":"El número tras ';' es validado (integridad)","request":{"m":"PING;65"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":4,"seq":"s01","step":{"hipotesis":"Mensaje sin ';'","request":{"m":"PING"}},"status":400,"rawText":"{\"error\":\"E103\",\"mensaje\":\"falta control\"}"}
+{"id":5,"seq":"s01","step":{"hipotesis":"Comando en minúsculas","request":{"m":"ping;64"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":6,"seq":"s01","step":{"hipotesis":"Comando desconocido","request":{"m":"FOO;64"}},"status":400,"rawText":"{\"error\":\"E202\",\"mensaje\":\"control inválido\"}"}
+{"id":7,"seq":"s01","step":{"hipotesis":"Cuerpo sin campo m","request":{"x":"PING;64"}},"status":400,"rawText":"{\"error\":\"E102\",\"mensaje\":\"falta m\"}"}
+{"id":8,"seq":"s01","step":{"hipotesis":"m no es string","request":{"m":123}},"status":400,"rawText":"{\"error\":\"E102\",\"mensaje\":\"falta m\"}"}
+{"id":9,"seq":"s01","step":{"hipotesis":"m vacío","request":{"m":""}},"status":400,"rawText":"{\"error\":\"E103\",\"mensaje\":\"falta control\"}"}
+{"id":10,"seq":"s01","step":{"hipotesis":"Cuerpo no es JSON","raw":"PING;64"},"status":400,"rawText":"{\"error\":\"E100\",\"mensaje\":\"json inválido\"}"}
+{"id":11,"seq":"s01","step":{"hipotesis":"Sin token","request":{"m":"PING;64"},"auth":false},"status":401,"rawText":"{\"error\":\"E001\",\"mensaje\":\"no autorizado\"}"}
+{"id":12,"seq":"s01","step":{"hipotesis":"Token inválido","request":{"m":"PING;64"},"token":"invalid-token"},"status":401,"rawText":"{\"error\":\"E001\",\"mensaje\":\"no autorizado\"}"}
+{"id":13,"seq":"s01","step":{"hipotesis":"GET /msg (método no soportado)","path":"/msg","method":"GET"},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":14,"seq":"s01","step":{"hipotesis":"Ruta inexistente","path":"/nope","method":"GET"},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":15,"seq":"s01","step":{"hipotesis":"Ruta inexistente con POST","path":"/nope","method":"POST","request":{"m":"PING;64"}},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":16,"seq":"s01","step":{"hipotesis":"GET /health con token","path":"/health","method":"GET"},"status":200,"rawText":"{\"ok\":true}"}
+{"id":17,"seq":"s01","step":{"hipotesis":"GET /health sin token","path":"/health","method":"GET","auth":false},"status":401,"rawText":"{\"error\":\"E001\",\"mensaje\":\"no autorizado\"}"}
+{"id":18,"seq":"s01","step":{"hipotesis":"Raíz /","path":"/","method":"GET"},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":19,"seq":"s02","step":{"hipotesis":"Orden auth vs ruta: ruta inexistente sin token","path":"/nope","method":"GET","auth":false},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":20,"seq":"s02","step":{"hipotesis":"Orden auth vs json: cuerpo inválido sin token","raw":"xx","auth":false},"status":401,"rawText":"{\"error\":\"E001\",\"mensaje\":\"no autorizado\"}"}
+{"id":21,"seq":"s02","step":{"hipotesis":"X-Req: ¿un 401 incrementa el contador? (ver x_req del siguiente)","request":{"m":"PING;1"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":22,"seq":"s02","step":{"hipotesis":"Control vacío tras ';'","request":{"m":"PING;"}},"status":400,"rawText":"{\"error\":\"E104\",\"mensaje\":\"segmento vacío\"}"}
+{"id":23,"seq":"s02","step":{"hipotesis":"Control no numérico en comando desconocido","request":{"m":"FOO;abc"}},"status":400,"rawText":"{\"error\":\"E201\",\"mensaje\":\"control mal formado\"}"}
+{"id":24,"seq":"s02","step":{"hipotesis":"Comando desconocido sin control","request":{"m":"FOO;"}},"status":400,"rawText":"{\"error\":\"E104\",\"mensaje\":\"segmento vacío\"}"}
+{"id":25,"seq":"s02","step":{"hipotesis":"Varios ';' en PING","request":{"m":"PING;a;b;64"}},"status":400,"rawText":"{\"error\":\"E302\",\"mensaje\":\"aridad inválida\"}"}
+{"id":26,"seq":"s02","step":{"hipotesis":"Espacios alrededor de m","request":{"m":" PING;64 "}},"status":400,"rawText":"{\"error\":\"E201\",\"mensaje\":\"control mal formado\"}"}
+{"id":27,"seq":"s02","step":{"hipotesis":"Mayúsculas mixtas","request":{"m":"PiNg;64"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":28,"seq":"s02","step":{"hipotesis":"Campos extra en el cuerpo","request":{"m":"PING;64","extra":1}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":29,"seq":"s02","step":{"hipotesis":"Cuerpo JSON array","raw":"[]"},"status":400,"rawText":"{\"error\":\"E102\",\"mensaje\":\"falta m\"}"}
+{"id":30,"seq":"s02","step":{"hipotesis":"Cuerpo JSON null","raw":"null"},"status":400,"rawText":"{\"error\":\"E102\",\"mensaje\":\"falta m\"}"}
+{"id":31,"seq":"s02","step":{"hipotesis":"Cuerpo JSON string","raw":"\"PING;64\""},"status":400,"rawText":"{\"error\":\"E102\",\"mensaje\":\"falta m\"}"}
+{"id":32,"seq":"s02","step":{"hipotesis":"Cuerpo vacío","raw":""},"status":400,"rawText":"{\"error\":\"E100\",\"mensaje\":\"json inválido\"}"}
+{"id":33,"seq":"s02","step":{"hipotesis":"m es null","request":{"m":null}},"status":400,"rawText":"{\"error\":\"E102\",\"mensaje\":\"falta m\"}"}
+{"id":34,"seq":"s02","step":{"hipotesis":"Content-Type text/plain con JSON válido","raw":"{\"m\":\"PING;64\"}","contentType":"text/plain"},"status":200,"rawText":"{\"pong\":true}"}
+{"id":35,"seq":"s02","step":{"hipotesis":"PUT /msg","path":"/msg","method":"PUT","request":{"m":"PING;64"}},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":36,"seq":"s02","step":{"hipotesis":"Barra final /msg/","path":"/msg/","request":{"m":"PING;64"}},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":37,"seq":"s02","step":{"hipotesis":"Mayúsculas en ruta /MSG","path":"/MSG","request":{"m":"PING;64"}},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":38,"seq":"s02","step":{"hipotesis":"GET /__reset","path":"/__reset","method":"GET"},"status":404,"rawText":"{\"error\":\"E404\",\"mensaje\":\"ruta desconocida\"}"}
+{"id":39,"seq":"s02","step":{"hipotesis":"POST /__reset sin token","path":"/__reset","method":"POST","auth":false},"status":401,"rawText":"{\"error\":\"E001\",\"mensaje\":\"no autorizado\"}"}
+{"id":40,"seq":"s02","step":{"hipotesis":"POST /__reset con token: respuesta exacta","path":"/__reset","method":"POST"},"status":200,"rawText":"{\"ok\":true}"}
+{"id":41,"seq":"s02","step":{"hipotesis":"Tras reset, X-Req vuelve a 1","request":{"m":"PING;64"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":42,"seq":"s03","step":{"hipotesis":"PING valida formato del control: control no numérico","request":{"m":"PING;abc"}},"status":200,"rawText":"{\"pong\":true}"}
+{"id":43,"seq":"s03","step":{"hipotesis":"Orden: aridad inválida + control incorrecto → ¿E302 o E202?","request":{"m":"ALTA;Lucia;Gomez;12"}},"status":400,"rawText":"{\"error\":\"E202\",\"mensaje\":\"control inválido\"}"}
+{"id":44,"seq":"s03","step":{"hipotesis":"Comando desconocido con control válido → E301 (mensaje con espacio final)","request":{"m":"FOO;47"}},"status":400,"rawText":"{\"error\":\"E301\",\"mensaje\":\"comando desconocido \"}"}
+{"id":45,"seq":"s03","step":{"hipotesis":"Control con cero a la izquierda (03 en vez de 3)","request":{"m":"ALTA;Mateo;03"}},"status":400,"rawText":"{\"error\":\"E202\",\"mensaje\":\"control inválido\"}"}
+{"id":46,"seq":"s03","step":{"hipotesis":"ALTA crea AC-0001 tras reset (y no la creó el 03)","request":{"m":"ALTA;Ana;50"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":47,"seq":"s03","step":{"hipotesis":"ALTA con nombre repetido: ¿duplica o error?","request":{"m":"ALTA;Ana;50"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":48,"seq":"s03","step":{"hipotesis":"ALTA con nombre vacío → E104?","request":{"m":"ALTA;;85"}},"status":400,"rawText":"{\"error\":\"E104\",\"mensaje\":\"segmento vacío\"}"}
+{"id":49,"seq":"s03","step":{"hipotesis":"ALTA con nombre con tilde (la tilde se ignora en el control)","request":{"m":"ALTA;Lucía;14"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0003\"}"}
+{"id":50,"seq":"s03","step":{"hipotesis":"ALTA con nombre numérico","request":{"m":"ALTA;123;18"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0004\"}"}
+{"id":51,"seq":"s03","step":{"hipotesis":"CONSULTA de cuenta nueva: saldo 0","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":0}"}
+{"id":52,"seq":"s03","step":{"hipotesis":"CONSULTA con id en minúsculas","request":{"m":"CONSULTA;ac-0001;14"}},"status":404,"rawText":"{\"error\":\"E401\",\"mensaje\":\"cuenta inexistente\"}"}
+{"id":53,"seq":"s03","step":{"hipotesis":"CONSULTA con id mal formado","request":{"m":"CONSULTA;XYZ;96"}},"status":404,"rawText":"{\"error\":\"E401\",\"mensaje\":\"cuenta inexistente\"}"}
+{"id":54,"seq":"s03","step":{"hipotesis":"DEPOSITO monto 0","request":{"m":"DEPOSITO;AC-0001;0;31"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":55,"seq":"s03","step":{"hipotesis":"DEPOSITO monto negativo","request":{"m":"DEPOSITO;AC-0001;-5;16"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":56,"seq":"s03","step":{"hipotesis":"DEPOSITO monto no numérico","request":{"m":"DEPOSITO;AC-0001;abc;13"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":57,"seq":"s03","step":{"hipotesis":"DEPOSITO monto decimal","request":{"m":"DEPOSITO;AC-0001;1.5;62"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":58,"seq":"s03","step":{"hipotesis":"DEPOSITO monto grande (¿límite?)","request":{"m":"DEPOSITO;AC-0001;5000000;18"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":59,"seq":"s03","step":{"hipotesis":"DEPOSITO normal → OP-0001 o siguiente","request":{"m":"DEPOSITO;AC-0001;300000;48"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
+{"id":60,"seq":"s03","step":{"hipotesis":"DEPOSITO a cuenta inexistente → E401","request":{"m":"DEPOSITO;AC-0099;100;89"}},"status":404,"rawText":"{\"error\":\"E401\",\"mensaje\":\"cuenta inexistente\"}"}
+{"id":61,"seq":"s03","step":{"hipotesis":"CONSULTA tras depósitos","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":5300000}"}
+{"id":62,"seq":"s03","step":{"hipotesis":"TRANSFER a la misma cuenta","request":{"m":"TRANSFER;AC-0001;AC-0001;1000;64"}},"status":400,"rawText":"{\"error\":\"E304\",\"mensaje\":\"origen y destino iguales\"}"}
+{"id":63,"seq":"s03","step":{"hipotesis":"TRANSFER exactamente 100000 (¿límite por operación?)","request":{"m":"TRANSFER;AC-0001;AC-0002;100000;12"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0003\"}"}
+{"id":64,"seq":"s03","step":{"hipotesis":"TRANSFER 100001 (¿límite por operación?)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0004\"}"}
+{"id":65,"seq":"s03","step":{"hipotesis":"TRANSFER desde cuenta inexistente","request":{"m":"TRANSFER;AC-0099;AC-0001;10;70"}},"status":404,"rawText":"{\"error\":\"E401\",\"mensaje\":\"cuenta inexistente\"}"}
+{"id":66,"seq":"s03","step":{"hipotesis":"TRANSFER a cuenta inexistente","request":{"m":"TRANSFER;AC-0001;AC-0099;10;13"}},"status":404,"rawText":"{\"error\":\"E401\",\"mensaje\":\"cuenta inexistente\"}"}
+{"id":67,"seq":"s03","step":{"hipotesis":"ANULA un DEPOSITO: ¿revierte saldo?","request":{"m":"ANULA;OP-0001;72"}},"status":200,"rawText":"{\"ok\":true,\"anulada\":\"OP-0001\"}"}
+{"id":68,"seq":"s03","step":{"hipotesis":"CONSULTA tras anular","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":99999}"}
+{"id":69,"seq":"s03","step":{"hipotesis":"ANULA operación inexistente","request":{"m":"ANULA;OP-9999;51"}},"status":404,"rawText":"{\"error\":\"E402\",\"mensaje\":\"operación inexistente\"}"}
+{"id":70,"seq":"s03","step":{"hipotesis":"ANULA con id mal formado","request":{"m":"ANULA;XYZ;44"}},"status":404,"rawText":"{\"error\":\"E402\",\"mensaje\":\"operación inexistente\"}"}
+{"id":71,"seq":"s04","step":{"hipotesis":"Setup: cuenta origen","request":{"m":"ALTA;Origen;19"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":72,"seq":"s04","step":{"hipotesis":"Setup: cuenta destino","request":{"m":"ALTA;Destino;41"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":73,"seq":"s04","step":{"hipotesis":"Setup: saldo 200000 en AC-0001","request":{"m":"DEPOSITO;AC-0001;200000;27"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":74,"seq":"s04","step":{"hipotesis":"Límite = 50% del saldo: 100001 de 200000 → E506","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":75,"seq":"s04","step":{"hipotesis":"Límite = 50% del saldo: 100000 de 200000 → OK","request":{"m":"TRANSFER;AC-0001;AC-0002;100000;12"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
+{"id":76,"seq":"s04","step":{"hipotesis":"Con saldo 100000: 50001 → E506 si es 50%","request":{"m":"TRANSFER;AC-0001;AC-0002;50001;56"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0003\"}"}
+{"id":77,"seq":"s04","step":{"hipotesis":"Con saldo 100000: 50000 → OK si es 50%","request":{"m":"TRANSFER;AC-0001;AC-0002;50000;59"}},"status":422,"rawText":"{\"error\":\"E507\",\"mensaje\":\"saldo insuficiente\"}"}
+{"id":78,"seq":"s04","step":{"hipotesis":"Orden E507 vs E506: monto > saldo (50000)","request":{"m":"TRANSFER;AC-0001;AC-0002;60000;32"}},"status":422,"rawText":"{\"error\":\"E507\",\"mensaje\":\"saldo insuficiente\"}"}
+{"id":79,"seq":"s04","step":{"hipotesis":"Saldo destino tras dos transferencias","request":{"m":"CONSULTA;AC-0002;11"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0002\",\"saldo\":150001}"}
+{"id":80,"seq":"s04","step":{"hipotesis":"ANULA de TRANSFER: ¿revierte ambos lados?","request":{"m":"ANULA;OP-0002;69"}},"status":200,"rawText":"{\"ok\":true,\"anulada\":\"OP-0002\"}"}
+{"id":81,"seq":"s04","step":{"hipotesis":"Saldo origen tras anular transfer","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":149999}"}
+{"id":82,"seq":"s04","step":{"hipotesis":"Saldo destino tras anular transfer","request":{"m":"CONSULTA;AC-0002;11"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0002\",\"saldo\":50001}"}
+{"id":83,"seq":"s04","step":{"hipotesis":"ANULA con id en minúsculas","request":{"m":"ANULA;op-0002;69"}},"status":404,"rawText":"{\"error\":\"E402\",\"mensaje\":\"operación inexistente\"}"}
+{"id":84,"seq":"s04","step":{"hipotesis":"ANULA repetida → ok:false ya anulada","request":{"m":"ANULA;OP-0002;69"}},"status":200,"rawText":"{\"ok\":false,\"motivo\":\"ya anulada\"}"}
+{"id":85,"seq":"s04","step":{"hipotesis":"¿Se puede anular una anulación? (¿la anulación tiene id?)","request":{"m":"ANULA;OP-0004;63"}},"status":404,"rawText":"{\"error\":\"E402\",\"mensaje\":\"operación inexistente\"}"}
+{"id":86,"seq":"s04","step":{"hipotesis":"Orden E303 vs E401: monto inválido en cuenta inexistente","request":{"m":"DEPOSITO;AC-0099;abc;20"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":87,"seq":"s04","step":{"hipotesis":"Orden E304 vs E401: misma cuenta inexistente","request":{"m":"TRANSFER;AC-0099;AC-0099;10;61"}},"status":400,"rawText":"{\"error\":\"E304\",\"mensaje\":\"origen y destino iguales\"}"}
+{"id":88,"seq":"s04","step":{"hipotesis":"Orden E303 vs E304: misma cuenta y monto inválido","request":{"m":"TRANSFER;AC-0001;AC-0001;abc;45"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":89,"seq":"s04","step":{"hipotesis":"Monto con cero a la izquierda","request":{"m":"DEPOSITO;AC-0001;0100;19"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":90,"seq":"s04","step":{"hipotesis":"Monto con signo +","request":{"m":"DEPOSITO;AC-0001;+5;16"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":91,"seq":"s04","step":{"hipotesis":"Monto enorme (más allá de 2^53)","request":{"m":"DEPOSITO;AC-0001;99999999999999999999;4"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":92,"seq":"s04","step":{"hipotesis":"Saldo tras montos raros","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":149999}"}
+{"id":93,"seq":"s04","step":{"hipotesis":"CONSULTA con argumento extra → E302","request":{"m":"CONSULTA;AC-0001;x;65"}},"status":400,"rawText":"{\"error\":\"E302\",\"mensaje\":\"aridad inválida\"}"}
+{"id":94,"seq":"s04","step":{"hipotesis":"DEPOSITO sin monto → E302","request":{"m":"DEPOSITO;AC-0001;4"}},"status":400,"rawText":"{\"error\":\"E302\",\"mensaje\":\"aridad inválida\"}"}
+{"id":95,"seq":"s04","step":{"hipotesis":"ANULA de operación fallida (no existe id)","request":{"m":"ANULA;OP-0099;69"}},"status":404,"rawText":"{\"error\":\"E402\",\"mensaje\":\"operación inexistente\"}"}
+{"id":96,"seq":"s05","step":{"hipotesis":"Setup: cuenta con saldo alto","request":{"m":"ALTA;Rica;44"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":97,"seq":"s05","step":{"hipotesis":"Setup: segunda cuenta","request":{"m":"ALTA;Otra;89"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":98,"seq":"s05","step":{"hipotesis":"Setup: depósito 1000000","request":{"m":"DEPOSITO;AC-0001;1000000;51"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":99,"seq":"s05","step":{"hipotesis":"Límite = max(100000, saldo/2): 400000 con saldo 1000000 → OK","request":{"m":"TRANSFER;AC-0001;AC-0002;400000;75"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":100,"seq":"s05","step":{"hipotesis":"Con saldo 600000: 300001 → E506 (mitad = 300000)","request":{"m":"TRANSFER;AC-0001;AC-0002;300001;51"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":101,"seq":"s05","step":{"hipotesis":"Con saldo 600000: 300000 → OK (justo la mitad)","request":{"m":"TRANSFER;AC-0001;AC-0002;300000;54"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":102,"seq":"s05","step":{"hipotesis":"Con saldo 300000: 150000 → OK","request":{"m":"TRANSFER;AC-0001;AC-0002;150000;71"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":103,"seq":"s05","step":{"hipotesis":"Con saldo 150000: 100000 → OK (el piso de 100000 manda)","request":{"m":"TRANSFER;AC-0001;AC-0002;100000;12"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":104,"seq":"s05","step":{"hipotesis":"Orden E507 vs E506: saldo 50000, monto 200000 (supera ambos)","request":{"m":"TRANSFER;AC-0001;AC-0002;200000;33"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":105,"seq":"s05","step":{"hipotesis":"Saldo 50000, monto 60000 (solo supera saldo) → E507","request":{"m":"TRANSFER;AC-0001;AC-0002;60000;32"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":106,"seq":"s05","step":{"hipotesis":"Saldo origen esperado 50000","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":1000000}"}
+{"id":107,"seq":"s05","step":{"hipotesis":"Setup: tercera cuenta","request":{"m":"ALTA;Tercera;40"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0003\"}"}
+{"id":108,"seq":"s05","step":{"hipotesis":"AC-0002 (saldo 950000) transfiere 475000 a AC-0003 (límite = mitad)","request":{"m":"TRANSFER;AC-0002;AC-0003;475000;78"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":109,"seq":"s05","step":{"hipotesis":"AC-0002 (saldo 475000) transfiere 237500","request":{"m":"TRANSFER;AC-0002;AC-0003;237500;16"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":110,"seq":"s05","step":{"hipotesis":"AC-0002 (saldo 237500) transfiere 118750","request":{"m":"TRANSFER;AC-0002;AC-0003;118750;82"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":111,"seq":"s05","step":{"hipotesis":"ANULA de transfer cuyo destino ya no tiene fondos (AC-0002 tiene 118750, debe devolver 400000): ¿error o saldo negativo?","request":{"m":"ANULA;OP-0002;69"}},"status":404,"rawText":"{\"error\":\"E402\",\"mensaje\":\"operación inexistente\"}"}
+{"id":112,"seq":"s05","step":{"hipotesis":"Saldo AC-0002 tras esa anulación","request":{"m":"CONSULTA;AC-0002;11"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0002\",\"saldo\":0}"}
+{"id":113,"seq":"s05","step":{"hipotesis":"Saldo AC-0001 tras esa anulación","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":1000000}"}
+{"id":114,"seq":"s05","step":{"hipotesis":"ANULA de depósito con saldo insuficiente en la cuenta (OP-0001 = 1000000)","request":{"m":"ANULA;OP-0001;72"}},"status":200,"rawText":"{\"ok\":true,\"anulada\":\"OP-0001\"}"}
+{"id":115,"seq":"s05","step":{"hipotesis":"Saldo AC-0001 tras anular el depósito","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":0}"}
+{"id":116,"seq":"s05","step":{"hipotesis":"Monto máximo seguro 2^53-1","request":{"m":"DEPOSITO;AC-0003;9007199254740991;13"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":117,"seq":"s05","step":{"hipotesis":"Monto 2^53","request":{"m":"DEPOSITO;AC-0003;9007199254740992;10"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":118,"seq":"s05","step":{"hipotesis":"Monto de 10 dígitos","request":{"m":"DEPOSITO;AC-0003;1000000000;43"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
+{"id":119,"seq":"s05","step":{"hipotesis":"Monto de 13 dígitos","request":{"m":"DEPOSITO;AC-0003;1000000000000;97"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":120,"seq":"s05","step":{"hipotesis":"Nombre con espacio","request":{"m":"ALTA;Ana Maria;44"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0004\"}"}
+{"id":121,"seq":"s05","step":{"hipotesis":"Nombre muy largo (120 caracteres)","request":{"m":"ALTA;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX;86"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0005\"}"}
+{"id":122,"seq":"s06","step":{"hipotesis":"Setup: cuenta A","request":{"m":"ALTA;A;62"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":123,"seq":"s06","step":{"hipotesis":"Setup: cuenta B","request":{"m":"ALTA;B;59"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":124,"seq":"s06","step":{"hipotesis":"Repetir condición de s03 (#64): saldo 5300000","request":{"m":"DEPOSITO;AC-0001;5300000;81"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":125,"seq":"s06","step":{"hipotesis":"¿100001 pasa ahora como en #64? Si falla: límite fijo 100000 y cambió la versión","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":126,"seq":"s06","step":{"hipotesis":"100000 → OK (límite inclusivo)","request":{"m":"TRANSFER;AC-0001;AC-0002;100000;12"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
+{"id":127,"seq":"s06","step":{"hipotesis":"Segundo E506","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":128,"seq":"s06","step":{"hipotesis":"Una transferencia exitosa: ¿reinicia el contador de E506?","request":{"m":"TRANSFER;AC-0001;AC-0002;50;87"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0003\"}"}
+{"id":129,"seq":"s06","step":{"hipotesis":"Tercer E506 en total (segundo consecutivo)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":130,"seq":"s06","step":{"hipotesis":"¿Bloqueada tras 3 E506 en total? (si OK: el contador es de consecutivos)","request":{"m":"TRANSFER;AC-0001;AC-0002;50;87"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0004\"}"}
+{"id":131,"seq":"s06","step":{"hipotesis":"E506 adicional","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":132,"seq":"s06","step":{"hipotesis":"E506 adicional","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":133,"seq":"s06","step":{"hipotesis":"E506 adicional","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":134,"seq":"s06","step":{"hipotesis":"Ya debería estar bloqueada","request":{"m":"TRANSFER;AC-0001;AC-0002;50;87"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":135,"seq":"s06","step":{"hipotesis":"DEPOSITO a cuenta bloqueada","request":{"m":"DEPOSITO;AC-0001;10;77"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0005\"}"}
+{"id":136,"seq":"s06","step":{"hipotesis":"Cuenta bloqueada como destino","request":{"m":"TRANSFER;AC-0002;AC-0001;10;70"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0006\"}"}
+{"id":137,"seq":"s06","step":{"hipotesis":"Orden E304 vs E510: bloqueada a sí misma","request":{"m":"TRANSFER;AC-0001;AC-0001;10;22"}},"status":400,"rawText":"{\"error\":\"E304\",\"mensaje\":\"origen y destino iguales\"}"}
+{"id":138,"seq":"s06","step":{"hipotesis":"Orden E401 vs E510: bloqueada a inexistente","request":{"m":"TRANSFER;AC-0001;AC-0099;10;13"}},"status":404,"rawText":"{\"error\":\"E401\",\"mensaje\":\"cuenta inexistente\"}"}
+{"id":139,"seq":"s06","step":{"hipotesis":"Orden E303 vs E510: monto inválido","request":{"m":"TRANSFER;AC-0001;AC-0002;abc;52"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":140,"seq":"s06","step":{"hipotesis":"ANULA de una operación de la cuenta bloqueada","request":{"m":"ANULA;OP-0001;72"}},"status":200,"rawText":"{\"ok\":true,\"anulada\":\"OP-0001\"}"}
+{"id":141,"seq":"s06","step":{"hipotesis":"CONSULTA de cuenta bloqueada (¿expone el bloqueo?)","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":-100080}"}
+{"id":142,"seq":"s06","step":{"hipotesis":"Monto 10 dígitos 9999999999","request":{"m":"DEPOSITO;AC-0002;9999999999;51"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0007\"}"}
+{"id":143,"seq":"s06","step":{"hipotesis":"Monto 11 dígitos 10000000000","request":{"m":"DEPOSITO;AC-0002;10000000000;48"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":144,"seq":"s06","step":{"hipotesis":"Monto 11 dígitos 99999999999","request":{"m":"DEPOSITO;AC-0002;99999999999;86"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":145,"seq":"s06","step":{"hipotesis":"Monto 12 dígitos 999999999999","request":{"m":"DEPOSITO;AC-0002;999999999999;48"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}

@@ -1,0 +1,161 @@
+{
+  "seq": "s05",
+  "steps": [
+    {
+      "hipotesis": "Setup: cuenta con saldo alto",
+      "request": {
+        "m": "ALTA;Rica;44"
+      }
+    },
+    {
+      "hipotesis": "Setup: segunda cuenta",
+      "request": {
+        "m": "ALTA;Otra;89"
+      }
+    },
+    {
+      "hipotesis": "Setup: depósito 1000000",
+      "request": {
+        "m": "DEPOSITO;AC-0001;1000000;51"
+      }
+    },
+    {
+      "hipotesis": "Límite = max(100000, saldo/2): 400000 con saldo 1000000 → OK",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;400000;75"
+      }
+    },
+    {
+      "hipotesis": "Con saldo 600000: 300001 → E506 (mitad = 300000)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;300001;51"
+      }
+    },
+    {
+      "hipotesis": "Con saldo 600000: 300000 → OK (justo la mitad)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;300000;54"
+      }
+    },
+    {
+      "hipotesis": "Con saldo 300000: 150000 → OK",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;150000;71"
+      }
+    },
+    {
+      "hipotesis": "Con saldo 150000: 100000 → OK (el piso de 100000 manda)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100000;12"
+      }
+    },
+    {
+      "hipotesis": "Orden E507 vs E506: saldo 50000, monto 200000 (supera ambos)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;200000;33"
+      }
+    },
+    {
+      "hipotesis": "Saldo 50000, monto 60000 (solo supera saldo) → E507",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;60000;32"
+      }
+    },
+    {
+      "hipotesis": "Saldo origen esperado 50000",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "Setup: tercera cuenta",
+      "request": {
+        "m": "ALTA;Tercera;40"
+      }
+    },
+    {
+      "hipotesis": "AC-0002 (saldo 950000) transfiere 475000 a AC-0003 (límite = mitad)",
+      "request": {
+        "m": "TRANSFER;AC-0002;AC-0003;475000;78"
+      }
+    },
+    {
+      "hipotesis": "AC-0002 (saldo 475000) transfiere 237500",
+      "request": {
+        "m": "TRANSFER;AC-0002;AC-0003;237500;16"
+      }
+    },
+    {
+      "hipotesis": "AC-0002 (saldo 237500) transfiere 118750",
+      "request": {
+        "m": "TRANSFER;AC-0002;AC-0003;118750;82"
+      }
+    },
+    {
+      "hipotesis": "ANULA de transfer cuyo destino ya no tiene fondos (AC-0002 tiene 118750, debe devolver 400000): ¿error o saldo negativo?",
+      "request": {
+        "m": "ANULA;OP-0002;69"
+      }
+    },
+    {
+      "hipotesis": "Saldo AC-0002 tras esa anulación",
+      "request": {
+        "m": "CONSULTA;AC-0002;11"
+      }
+    },
+    {
+      "hipotesis": "Saldo AC-0001 tras esa anulación",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "ANULA de depósito con saldo insuficiente en la cuenta (OP-0001 = 1000000)",
+      "request": {
+        "m": "ANULA;OP-0001;72"
+      }
+    },
+    {
+      "hipotesis": "Saldo AC-0001 tras anular el depósito",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "Monto máximo seguro 2^53-1",
+      "request": {
+        "m": "DEPOSITO;AC-0003;9007199254740991;13"
+      }
+    },
+    {
+      "hipotesis": "Monto 2^53",
+      "request": {
+        "m": "DEPOSITO;AC-0003;9007199254740992;10"
+      }
+    },
+    {
+      "hipotesis": "Monto de 10 dígitos",
+      "request": {
+        "m": "DEPOSITO;AC-0003;1000000000;43"
+      }
+    },
+    {
+      "hipotesis": "Monto de 13 dígitos",
+      "request": {
+        "m": "DEPOSITO;AC-0003;1000000000000;97"
+      }
+    },
+    {
+      "hipotesis": "Nombre con espacio",
+      "request": {
+        "m": "ALTA;Ana Maria;44"
+      }
+    },
+    {
+      "hipotesis": "Nombre muy largo (120 caracteres)",
+      "request": {
+        "m": "ALTA;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX;86"
+      }
+    }
+  ]
+}

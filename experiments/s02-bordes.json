@@ -1,0 +1,28 @@
+{
+  "seq": "s02",
+  "steps": [
+    { "hipotesis": "Orden auth vs ruta: ruta inexistente sin token", "path": "/nope", "method": "GET", "auth": false },
+    { "hipotesis": "Orden auth vs json: cuerpo inválido sin token", "raw": "xx", "auth": false },
+    { "hipotesis": "X-Req: ¿un 401 incrementa el contador? (ver x_req del siguiente)", "request": { "m": "PING;1" } },
+    { "hipotesis": "Control vacío tras ';'", "request": { "m": "PING;" } },
+    { "hipotesis": "Control no numérico en comando desconocido", "request": { "m": "FOO;abc" } },
+    { "hipotesis": "Comando desconocido sin control", "request": { "m": "FOO;" } },
+    { "hipotesis": "Varios ';' en PING", "request": { "m": "PING;a;b;64" } },
+    { "hipotesis": "Espacios alrededor de m", "request": { "m": " PING;64 " } },
+    { "hipotesis": "Mayúsculas mixtas", "request": { "m": "PiNg;64" } },
+    { "hipotesis": "Campos extra en el cuerpo", "request": { "m": "PING;64", "extra": 1 } },
+    { "hipotesis": "Cuerpo JSON array", "raw": "[]" },
+    { "hipotesis": "Cuerpo JSON null", "raw": "null" },
+    { "hipotesis": "Cuerpo JSON string", "raw": "\"PING;64\"" },
+    { "hipotesis": "Cuerpo vacío", "raw": "" },
+    { "hipotesis": "m es null", "request": { "m": null } },
+    { "hipotesis": "Content-Type text/plain con JSON válido", "raw": "{\"m\":\"PING;64\"}", "contentType": "text/plain" },
+    { "hipotesis": "PUT /msg", "path": "/msg", "method": "PUT", "request": { "m": "PING;64" } },
+    { "hipotesis": "Barra final /msg/", "path": "/msg/", "request": { "m": "PING;64" } },
+    { "hipotesis": "Mayúsculas en ruta /MSG", "path": "/MSG", "request": { "m": "PING;64" } },
+    { "hipotesis": "GET /__reset", "path": "/__reset", "method": "GET" },
+    { "hipotesis": "POST /__reset sin token", "path": "/__reset", "method": "POST", "auth": false },
+    { "hipotesis": "POST /__reset con token: respuesta exacta", "path": "/__reset", "method": "POST" },
+    { "hipotesis": "Tras reset, X-Req vuelve a 1", "request": { "m": "PING;64" } }
+  ]
+}

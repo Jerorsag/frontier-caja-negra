@@ -1,0 +1,149 @@
+{
+  "seq": "s06",
+  "steps": [
+    {
+      "hipotesis": "Setup: cuenta A",
+      "request": {
+        "m": "ALTA;A;62"
+      }
+    },
+    {
+      "hipotesis": "Setup: cuenta B",
+      "request": {
+        "m": "ALTA;B;59"
+      }
+    },
+    {
+      "hipotesis": "Repetir condición de s03 (#64): saldo 5300000",
+      "request": {
+        "m": "DEPOSITO;AC-0001;5300000;81"
+      }
+    },
+    {
+      "hipotesis": "¿100001 pasa ahora como en #64? Si falla: límite fijo 100000 y cambió la versión",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "100000 → OK (límite inclusivo)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100000;12"
+      }
+    },
+    {
+      "hipotesis": "Segundo E506",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "Una transferencia exitosa: ¿reinicia el contador de E506?",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;50;87"
+      }
+    },
+    {
+      "hipotesis": "Tercer E506 en total (segundo consecutivo)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "¿Bloqueada tras 3 E506 en total? (si OK: el contador es de consecutivos)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;50;87"
+      }
+    },
+    {
+      "hipotesis": "E506 adicional",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "E506 adicional",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "E506 adicional",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "Ya debería estar bloqueada",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;50;87"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO a cuenta bloqueada",
+      "request": {
+        "m": "DEPOSITO;AC-0001;10;77"
+      }
+    },
+    {
+      "hipotesis": "Cuenta bloqueada como destino",
+      "request": {
+        "m": "TRANSFER;AC-0002;AC-0001;10;70"
+      }
+    },
+    {
+      "hipotesis": "Orden E304 vs E510: bloqueada a sí misma",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0001;10;22"
+      }
+    },
+    {
+      "hipotesis": "Orden E401 vs E510: bloqueada a inexistente",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0099;10;13"
+      }
+    },
+    {
+      "hipotesis": "Orden E303 vs E510: monto inválido",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;abc;52"
+      }
+    },
+    {
+      "hipotesis": "ANULA de una operación de la cuenta bloqueada",
+      "request": {
+        "m": "ANULA;OP-0001;72"
+      }
+    },
+    {
+      "hipotesis": "CONSULTA de cuenta bloqueada (¿expone el bloqueo?)",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "Monto 10 dígitos 9999999999",
+      "request": {
+        "m": "DEPOSITO;AC-0002;9999999999;51"
+      }
+    },
+    {
+      "hipotesis": "Monto 11 dígitos 10000000000",
+      "request": {
+        "m": "DEPOSITO;AC-0002;10000000000;48"
+      }
+    },
+    {
+      "hipotesis": "Monto 11 dígitos 99999999999",
+      "request": {
+        "m": "DEPOSITO;AC-0002;99999999999;86"
+      }
+    },
+    {
+      "hipotesis": "Monto 12 dígitos 999999999999",
+      "request": {
+        "m": "DEPOSITO;AC-0002;999999999999;48"
+      }
+    }
+  ]
+}

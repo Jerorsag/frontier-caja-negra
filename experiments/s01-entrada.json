@@ -1,0 +1,23 @@
+{
+  "seq": "s01",
+  "steps": [
+    { "hipotesis": "El ejemplo del README responde y muestra el formato base", "request": { "m": "PING;64" } },
+    { "hipotesis": "Repetir el mismo mensaje da la misma respuesta (sin estado)", "request": { "m": "PING;64" } },
+    { "hipotesis": "El número tras ';' es validado (integridad)", "request": { "m": "PING;65" } },
+    { "hipotesis": "Mensaje sin ';'", "request": { "m": "PING" } },
+    { "hipotesis": "Comando en minúsculas", "request": { "m": "ping;64" } },
+    { "hipotesis": "Comando desconocido", "request": { "m": "FOO;64" } },
+    { "hipotesis": "Cuerpo sin campo m", "request": { "x": "PING;64" } },
+    { "hipotesis": "m no es string", "request": { "m": 123 } },
+    { "hipotesis": "m vacío", "request": { "m": "" } },
+    { "hipotesis": "Cuerpo no es JSON", "raw": "PING;64" },
+    { "hipotesis": "Sin token", "request": { "m": "PING;64" }, "auth": false },
+    { "hipotesis": "Token inválido", "request": { "m": "PING;64" }, "token": "invalid-token" },
+    { "hipotesis": "GET /msg (método no soportado)", "path": "/msg", "method": "GET" },
+    { "hipotesis": "Ruta inexistente", "path": "/nope", "method": "GET" },
+    { "hipotesis": "Ruta inexistente con POST", "path": "/nope", "method": "POST", "request": { "m": "PING;64" } },
+    { "hipotesis": "GET /health con token", "path": "/health", "method": "GET" },
+    { "hipotesis": "GET /health sin token", "path": "/health", "method": "GET", "auth": false },
+    { "hipotesis": "Raíz /", "path": "/", "method": "GET" }
+  ]
+}

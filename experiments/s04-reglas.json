@@ -1,0 +1,155 @@
+{
+  "seq": "s04",
+  "steps": [
+    {
+      "hipotesis": "Setup: cuenta origen",
+      "request": {
+        "m": "ALTA;Origen;19"
+      }
+    },
+    {
+      "hipotesis": "Setup: cuenta destino",
+      "request": {
+        "m": "ALTA;Destino;41"
+      }
+    },
+    {
+      "hipotesis": "Setup: saldo 200000 en AC-0001",
+      "request": {
+        "m": "DEPOSITO;AC-0001;200000;27"
+      }
+    },
+    {
+      "hipotesis": "Límite = 50% del saldo: 100001 de 200000 → E506",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "Límite = 50% del saldo: 100000 de 200000 → OK",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100000;12"
+      }
+    },
+    {
+      "hipotesis": "Con saldo 100000: 50001 → E506 si es 50%",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;50001;56"
+      }
+    },
+    {
+      "hipotesis": "Con saldo 100000: 50000 → OK si es 50%",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;50000;59"
+      }
+    },
+    {
+      "hipotesis": "Orden E507 vs E506: monto > saldo (50000)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;60000;32"
+      }
+    },
+    {
+      "hipotesis": "Saldo destino tras dos transferencias",
+      "request": {
+        "m": "CONSULTA;AC-0002;11"
+      }
+    },
+    {
+      "hipotesis": "ANULA de TRANSFER: ¿revierte ambos lados?",
+      "request": {
+        "m": "ANULA;OP-0002;69"
+      }
+    },
+    {
+      "hipotesis": "Saldo origen tras anular transfer",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "Saldo destino tras anular transfer",
+      "request": {
+        "m": "CONSULTA;AC-0002;11"
+      }
+    },
+    {
+      "hipotesis": "ANULA con id en minúsculas",
+      "request": {
+        "m": "ANULA;op-0002;69"
+      }
+    },
+    {
+      "hipotesis": "ANULA repetida → ok:false ya anulada",
+      "request": {
+        "m": "ANULA;OP-0002;69"
+      }
+    },
+    {
+      "hipotesis": "¿Se puede anular una anulación? (¿la anulación tiene id?)",
+      "request": {
+        "m": "ANULA;OP-0004;63"
+      }
+    },
+    {
+      "hipotesis": "Orden E303 vs E401: monto inválido en cuenta inexistente",
+      "request": {
+        "m": "DEPOSITO;AC-0099;abc;20"
+      }
+    },
+    {
+      "hipotesis": "Orden E304 vs E401: misma cuenta inexistente",
+      "request": {
+        "m": "TRANSFER;AC-0099;AC-0099;10;61"
+      }
+    },
+    {
+      "hipotesis": "Orden E303 vs E304: misma cuenta y monto inválido",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0001;abc;45"
+      }
+    },
+    {
+      "hipotesis": "Monto con cero a la izquierda",
+      "request": {
+        "m": "DEPOSITO;AC-0001;0100;19"
+      }
+    },
+    {
+      "hipotesis": "Monto con signo +",
+      "request": {
+        "m": "DEPOSITO;AC-0001;+5;16"
+      }
+    },
+    {
+      "hipotesis": "Monto enorme (más allá de 2^53)",
+      "request": {
+        "m": "DEPOSITO;AC-0001;99999999999999999999;4"
+      }
+    },
+    {
+      "hipotesis": "Saldo tras montos raros",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "CONSULTA con argumento extra → E302",
+      "request": {
+        "m": "CONSULTA;AC-0001;x;65"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO sin monto → E302",
+      "request": {
+        "m": "DEPOSITO;AC-0001;4"
+      }
+    },
+    {
+      "hipotesis": "ANULA de operación fallida (no existe id)",
+      "request": {
+        "m": "ANULA;OP-0099;69"
+      }
+    }
+  ]
+}

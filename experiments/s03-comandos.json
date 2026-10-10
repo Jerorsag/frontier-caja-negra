@@ -1,0 +1,179 @@
+{
+  "seq": "s03",
+  "steps": [
+    {
+      "hipotesis": "PING valida formato del control: control no numérico",
+      "request": {
+        "m": "PING;abc"
+      }
+    },
+    {
+      "hipotesis": "Orden: aridad inválida + control incorrecto → ¿E302 o E202?",
+      "request": {
+        "m": "ALTA;Lucia;Gomez;12"
+      }
+    },
+    {
+      "hipotesis": "Comando desconocido con control válido → E301 (mensaje con espacio final)",
+      "request": {
+        "m": "FOO;47"
+      }
+    },
+    {
+      "hipotesis": "Control con cero a la izquierda (03 en vez de 3)",
+      "request": {
+        "m": "ALTA;Mateo;03"
+      }
+    },
+    {
+      "hipotesis": "ALTA crea AC-0001 tras reset (y no la creó el 03)",
+      "request": {
+        "m": "ALTA;Ana;50"
+      }
+    },
+    {
+      "hipotesis": "ALTA con nombre repetido: ¿duplica o error?",
+      "request": {
+        "m": "ALTA;Ana;50"
+      }
+    },
+    {
+      "hipotesis": "ALTA con nombre vacío → E104?",
+      "request": {
+        "m": "ALTA;;85"
+      }
+    },
+    {
+      "hipotesis": "ALTA con nombre con tilde (la tilde se ignora en el control)",
+      "request": {
+        "m": "ALTA;Lucía;14"
+      }
+    },
+    {
+      "hipotesis": "ALTA con nombre numérico",
+      "request": {
+        "m": "ALTA;123;18"
+      }
+    },
+    {
+      "hipotesis": "CONSULTA de cuenta nueva: saldo 0",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "CONSULTA con id en minúsculas",
+      "request": {
+        "m": "CONSULTA;ac-0001;14"
+      }
+    },
+    {
+      "hipotesis": "CONSULTA con id mal formado",
+      "request": {
+        "m": "CONSULTA;XYZ;96"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO monto 0",
+      "request": {
+        "m": "DEPOSITO;AC-0001;0;31"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO monto negativo",
+      "request": {
+        "m": "DEPOSITO;AC-0001;-5;16"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO monto no numérico",
+      "request": {
+        "m": "DEPOSITO;AC-0001;abc;13"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO monto decimal",
+      "request": {
+        "m": "DEPOSITO;AC-0001;1.5;62"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO monto grande (¿límite?)",
+      "request": {
+        "m": "DEPOSITO;AC-0001;5000000;18"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO normal → OP-0001 o siguiente",
+      "request": {
+        "m": "DEPOSITO;AC-0001;300000;48"
+      }
+    },
+    {
+      "hipotesis": "DEPOSITO a cuenta inexistente → E401",
+      "request": {
+        "m": "DEPOSITO;AC-0099;100;89"
+      }
+    },
+    {
+      "hipotesis": "CONSULTA tras depósitos",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "TRANSFER a la misma cuenta",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0001;1000;64"
+      }
+    },
+    {
+      "hipotesis": "TRANSFER exactamente 100000 (¿límite por operación?)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100000;12"
+      }
+    },
+    {
+      "hipotesis": "TRANSFER 100001 (¿límite por operación?)",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0002;100001;9"
+      }
+    },
+    {
+      "hipotesis": "TRANSFER desde cuenta inexistente",
+      "request": {
+        "m": "TRANSFER;AC-0099;AC-0001;10;70"
+      }
+    },
+    {
+      "hipotesis": "TRANSFER a cuenta inexistente",
+      "request": {
+        "m": "TRANSFER;AC-0001;AC-0099;10;13"
+      }
+    },
+    {
+      "hipotesis": "ANULA un DEPOSITO: ¿revierte saldo?",
+      "request": {
+        "m": "ANULA;OP-0001;72"
+      }
+    },
+    {
+      "hipotesis": "CONSULTA tras anular",
+      "request": {
+        "m": "CONSULTA;AC-0001;14"
+      }
+    },
+    {
+      "hipotesis": "ANULA operación inexistente",
+      "request": {
+        "m": "ANULA;OP-9999;51"
+      }
+    },
+    {
+      "hipotesis": "ANULA con id mal formado",
+      "request": {
+        "m": "ANULA;XYZ;44"
+      }
+    }
+  ]
+}
