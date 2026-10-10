@@ -1,3 +1,10 @@
 {
-  "s03": "recorded 10:36, before the transfer-limit change detected at 10:44 (#64 vs #125); kept as evidence, not as a test"
+  "s03": "recorded 10:36, before the transfer-limit change detected at 10:44 (#64 vs #125); kept as evidence, not as a test",
+  "s04": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
+  "s05": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
+  "s06": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
+  "s07": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
+  "s08": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
+  "s12": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14",
+  "s13": "recorded under v1; superseded by the v2 incident (FR-0153); v2 behavior verified by s14"
 }

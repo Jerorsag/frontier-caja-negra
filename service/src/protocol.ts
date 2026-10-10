@@ -2,7 +2,7 @@
 // Each step cites the spec section; experiment ids are in docs/especificacion.md.
 import { control } from './control.js';
 import { config } from './config.js';
-import { E, type Reply } from './errors.js';
+import { E, accountLocked, type Reply } from './errors.js';
 import type { Account, Store } from './store.js';
 
 // NOTAS and HALT are not in the public examples: found by probing (exp. 255, 259).
@@ -124,14 +124,23 @@ function parseAmount(raw: string): number | null {
 
 function alta(store: Store, name: string): Reply {
   const id = store.nextAccountId();
-  store.accounts.set(id, { id, name, balance: 0, consecutiveRejections: 0, locked: false });
+  store.accounts.set(id, { id, name, balance: 0, consecutiveRejections: 0, locked: false, lockedAttempts: 0 });
   return { status: 201, body: { cuentaId: id } };
 }
 
 function consulta(store: Store, id: string): Reply {
   const acc = store.accounts.get(id);
   if (!acc) return E.unknownAccount;
-  return { status: 200, body: { cuenta_id: acc.id, saldo: acc.balance } };
+  return { status: 200, body: { cuenta_id: acc.id, saldo: formatBalance(acc.balance) } };
+}
+
+/**
+ * v2 (exp. 826, 834): "saldo" is a string with 2 decimals, the stored integer divided by 100.
+ * Integer arithmetic only, so it is exact. Amounts are still stored and compared as integers.
+ */
+function formatBalance(balance: number): string {
+  const abs = Math.abs(balance);
+  return `${balance < 0 ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
 
 function deposito(store: Store, id: string, rawAmount: string): Reply {
@@ -142,6 +151,7 @@ function deposito(store: Store, id: string, rawAmount: string): Reply {
   acc.balance += amount; // allowed on locked accounts
   acc.consecutiveRejections = 0; // exp. 175-179: a successful deposit resets the rejection count
   acc.locked = false; // exp. 278-280: and lifts an existing lock
+  acc.lockedAttempts = 0; // unlocked: "intentos" starts again (assumed; no re-lock was probed)
   const opId = store.nextOperationId();
   store.operations.set(opId, { id: opId, kind: 'DEPOSITO', account: id, amount, reversed: false });
   return received(opId);
@@ -154,7 +164,10 @@ function transfer(store: Store, fromId: string, toId: string, rawAmount: string)
   const from = store.accounts.get(fromId);
   const to = store.accounts.get(toId);
   if (!from || !to) return E.unknownAccount;
-  if (from.locked) return E.accountLocked; // E510 before E506 / E507
+  if (from.locked) {
+    from.lockedAttempts += 1; // exp. 830-831: 1, 2, … per attempt while locked
+    return accountLocked(from.lockedAttempts); // E510 before E506 / E507
+  }
   if (amount > config.transferLimit) {
     registerRejection(from);
     return E.limitExceeded; // E506 before E507

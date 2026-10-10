@@ -23,6 +23,11 @@ export const E = {
   unknownOperation: err(404, 'E402', 'operación inexistente'),
   limitExceeded: err(422, 'E506', 'límite excedido'),
   insufficientFunds: err(422, 'E507', 'saldo insuficiente'),
-  accountLocked: err(409, 'E510', 'cuenta bloqueada'),
   haltGuard: err(409, 'E520', 'operación destructiva: detiene el servicio; reenvía con confirmación'), // exp. 259, verbatim
 } as const;
+
+/** E510 since v2 (exp. 830-831, 586-589): status 423 (it was 409) and the number of attempts made while locked. */
+export const accountLocked = (intentos: number): Reply => ({
+  status: 423,
+  body: { error: 'E510', mensaje: 'cuenta bloqueada', intentos },
+});

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { control } from './control.js';
-import { E, type Reply } from './errors.js';
+import { E, accountLocked, type Reply } from './errors.js';
 import { handleMessage } from './protocol.js';
 import { Store } from './store.js';
 
@@ -17,7 +17,15 @@ const ok = (store: Store, body: string): Reply => {
   assert.ok(r.status < 300, `${body} → ${r.status} ${JSON.stringify(r.body)}`);
   return r;
 };
-const balance = (store: Store, id: string): number => (ok(store, `CONSULTA;${id}`).body as { saldo: number }).saldo;
+/** The raw "saldo" of CONSULTA: since v2 a string with 2 decimals. */
+const saldo = (store: Store, id: string): string => {
+  const s = (ok(store, `CONSULTA;${id}`).body as { saldo: unknown }).saldo;
+  assert.equal(typeof s, 'string');
+  assert.match(s as string, /^-?[0-9]+\.[0-9]{2}$/);
+  return s as string;
+};
+/** The balance in the units of DEPOSITO and TRANSFER (saldo × 100), read through CONSULTA. */
+const balance = (store: Store, id: string): number => Number(saldo(store, id).replace('.', ''));
 const received = (opId: string): Reply => ({ status: 200, body: { status: 'recieved', operacionId: opId } });
 
 /** AC-0001 and AC-0002, with an optional deposit (OP-0001) into AC-0001. */
@@ -29,7 +37,7 @@ function twoAccounts(deposit?: number): Store {
   return store;
 }
 
-/** Three consecutive E506 from AC-0001 → locked. */
+/** Three consecutive E506 from AC-0001 → locked. No attempt has been made on the locked account yet. */
 function lockedSource(deposit?: number): Store {
   const store = twoAccounts(deposit);
   for (let i = 0; i < 3; i++) assert.deepEqual(msg(store, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
@@ -170,8 +178,8 @@ test('E303, E304 and E401 before E510 on a locked source (#139, #137, #138)', ()
 
 test('E510 before E506 and before E507 (#104, #105)', () => {
   const s = lockedSource(50000);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;200000'), E.accountLocked); // over the limit
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;60000'), E.accountLocked); // over the balance
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;200000'), accountLocked(1)); // over the limit
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;60000'), accountLocked(2)); // over the balance
 });
 
 test('E506 before E507: over the limit with balance 0 (#108)', () => {
@@ -184,17 +192,21 @@ test('E507 when the amount is within the limit and over the balance (#77)', () =
 
 // ── Limit and lock ───────────────────────────────────────────────────────────
 
-test('the transfer limit is inclusive at 100000 (#125, #126)', () => {
+test('v2: the transfer limit is inclusive at 50000: 50000 OK, 50001 → E506 (#818, #560)', () => {
   const s = twoAccounts(5300000);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100000'), received('OP-0002'));
-  assert.equal(balance(s, 'AC-0001'), 5200000);
-  assert.equal(balance(s, 'AC-0002'), 100000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;50001'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;50000'), received('OP-0002'));
+  assert.equal(balance(s, 'AC-0001'), 5250000);
+  assert.equal(balance(s, 'AC-0002'), 50000);
+});
+
+test('v2: 100000 is now over the limit (#559; it was accepted in v1, #75)', () => {
+  assert.deepEqual(msg(twoAccounts(200000), 'TRANSFER;AC-0001;AC-0002;100000'), E.limitExceeded);
 });
 
 test('three consecutive E506 lock the source, even for a valid amount (#131–134)', () => {
   const s = lockedSource(1000000);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), E.accountLocked);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), accountLocked(1));
   assert.equal(balance(s, 'AC-0001'), 1000000); // rejections moved nothing (#106)
 });
 
@@ -208,13 +220,14 @@ test('a successful transfer resets the count: three non-consecutive E506 do not 
 });
 
 test('E507 also counts toward the lock: E506, E506, E507 → the next transfer is E510 (#149–153)', () => {
-  const s = twoAccounts(50000);
+  // Amounts adapted to the v2 limit: 30000 is within the limit and over the balance, so it is an E507.
+  const s = twoAccounts(20000);
   assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
   assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;60000'), E.insufficientFunds);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.accountLocked); // #152
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), E.accountLocked); // #153: even a valid amount
-  assert.equal(balance(s, 'AC-0001'), 50000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;30000'), E.insufficientFunds);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), accountLocked(1)); // #152
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), accountLocked(2)); // #153: even a valid amount
+  assert.equal(balance(s, 'AC-0001'), 20000);
 });
 
 test('E302 before E303 and before E401: wrong arity with a bad amount or an unknown account (#154, #155)', () => {
@@ -232,7 +245,7 @@ test('a locked account still receives deposits and transfers (#135, #136)', () =
 });
 
 test('CONSULTA works on a locked account and does not show the lock (#106)', () => {
-  assert.deepEqual(msg(lockedSource(1000), 'CONSULTA;AC-0001'), { status: 200, body: { cuenta_id: 'AC-0001', saldo: 1000 } });
+  assert.deepEqual(msg(lockedSource(1000), 'CONSULTA;AC-0001'), { status: 200, body: { cuenta_id: 'AC-0001', saldo: '10.00' } });
 });
 
 // ── Deposit and the lock counter ─────────────────────────────────────────────
@@ -248,7 +261,7 @@ test('a successful deposit resets the rejection count: E506, E506, DEPOSITO, E50
 
 test('a successful deposit lifts an existing lock: 3× E506, E510, DEPOSITO, then a valid transfer is OK (#272–281)', () => {
   const s = lockedSource(500000);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100'), E.accountLocked); // #278
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100'), accountLocked(1)); // #278, v2 #681
   assert.deepEqual(msg(s, 'DEPOSITO;AC-0001;100'), received('OP-0002')); // #279
   assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100'), received('OP-0003')); // #280
   assert.equal(balance(s, 'AC-0001'), 500000); // #281
@@ -257,11 +270,86 @@ test('a successful deposit lifts an existing lock: 3× E506, E510, DEPOSITO, the
 test('three consecutive E507 alone lock the source (#168–171)', () => {
   const s = twoAccounts(1000);
   for (let i = 0; i < 3; i++) assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;5000'), E.insufficientFunds);
-  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), E.accountLocked);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), accountLocked(1)); // v2 #655
 });
 
 test('E302 before E304: wrong arity with the same account (#173)', () => {
   assert.deepEqual(raw(twoAccounts(), 'TRANSFER;AC-0001;AC-0001;10;x;89'), E.invalidArity);
+});
+
+// ── v2 (incident FR-0153): locked response, balance format ───────────────────
+
+test('v2: a locked source answers 423 E510 with "intentos" counting 1, 2, 3, 4, whatever the amount (#586–589)', () => {
+  const s = lockedSource(1000000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;150000'), logged(586));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100000'), logged(587));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;200000'), logged(588));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;60000'), logged(589));
+  assert.deepEqual(logged(589), { status: 423, body: { error: 'E510', mensaje: 'cuenta bloqueada', intentos: 4 } });
+});
+
+test('v2: the three E506 that lock the account do not count as "intentos": the first attempt is 1 (#827–831)', () => {
+  const s = twoAccounts(100000000);
+  for (let i = 0; i < 3; i++) assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;99999999'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), logged(830));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), logged(831));
+});
+
+test('v2: a deposit still lifts the lock (#832, #833); after a new lock "intentos" starts at 1 again (assumed, not probed)', () => {
+  const s = lockedSource(1000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), accountLocked(1));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), accountLocked(2));
+  assert.deepEqual(msg(s, 'DEPOSITO;AC-0001;10'), received('OP-0002'));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), received('OP-0003'));
+  for (let i = 0; i < 3; i++) assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), accountLocked(1));
+});
+
+test('v2: E303, E304 and E401 on a locked source do not count as "intentos" (assumed, not probed in v2)', () => {
+  const s = lockedSource(1000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;abc'), E.invalidAmount);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0001;10'), E.sameAccount);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0099;10'), E.unknownAccount);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), accountLocked(1));
+});
+
+test('v2: HALT keeps status 409 (#259, unchanged in v2: #802)', () => {
+  assert.equal(raw(twoAccounts(), 'HALT;AC-0001;82').status, 409);
+  assert.deepEqual(logged(802), logged(259));
+});
+
+test('v2: CONSULTA returns "saldo" as a string with 2 decimals: a new account is "0.00" (#596)', () => {
+  const s = twoAccounts();
+  assert.deepEqual(msg(s, 'CONSULTA;AC-0002'), logged(596));
+  assert.deepEqual(logged(596).body, { cuenta_id: 'AC-0002', saldo: '0.00' });
+});
+
+test('v2: the s14 sequence gives "860.40" and "999139.60" (#815–834)', () => {
+  const s = twoAccounts(100000000);
+  for (const amount of [50000, 10, 25000, 10, 10000, 10, 1000, 10]) ok(s, `TRANSFER;AC-0001;AC-0002;${amount}`);
+  assert.deepEqual(msg(s, 'CONSULTA;AC-0002'), logged(826));
+  assert.equal(saldo(s, 'AC-0002'), '860.40');
+  for (let i = 0; i < 3; i++) assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;99999999'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), logged(830));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), logged(831));
+  ok(s, 'DEPOSITO;AC-0001;10');
+  ok(s, 'TRANSFER;AC-0001;AC-0002;10');
+  assert.deepEqual(msg(s, 'CONSULTA;AC-0001'), logged(834));
+  assert.equal(saldo(s, 'AC-0001'), '999139.60');
+});
+
+test('v2: balances under 100 keep two decimals: 10 → "0.10" (#625), 5 → "0.05"', () => {
+  const s = twoAccounts(10);
+  assert.equal(saldo(s, 'AC-0001'), '0.10');
+  ok(s, 'TRANSFER;AC-0001;AC-0002;5');
+  assert.equal(saldo(s, 'AC-0001'), '0.05');
+});
+
+test('v2: a negative balance is written with a leading minus: "-1.00" (assumed, no negative balance was seen in v2)', () => {
+  const s = twoAccounts(100);
+  ok(s, 'TRANSFER;AC-0001;AC-0002;100');
+  ok(s, 'ANULA;OP-0001');
+  assert.equal(saldo(s, 'AC-0001'), '-1.00');
 });
 
 // ── NOTAS and HALT ───────────────────────────────────────────────────────────

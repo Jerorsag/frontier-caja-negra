@@ -5,6 +5,7 @@ export interface Account {
   balance: number;
   consecutiveRejections: number;
   locked: boolean;
+  lockedAttempts: number; // transfers attempted while locked: the "intentos" of E510 (v2)
 }
 
 export type Operation =

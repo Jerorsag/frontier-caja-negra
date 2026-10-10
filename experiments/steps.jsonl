@@ -292,3 +292,23 @@
 {"id":422,"seq":"s13","step":{"hipotesis":"Cuenta bloqueada RECIBE una transferencia entrante de B","request":{"m":"TRANSFER;AC-0002;AC-0001;100;12"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
 {"id":423,"seq":"s13","step":{"hipotesis":"Tras recibir: A sigue bloqueada? E510 = entrante NO desbloquea","request":{"m":"TRANSFER;AC-0001;AC-0002;50;87"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
 {"id":424,"seq":"s13","step":{"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":100}"}
+{"id":815,"seq":"s14","step":{"hipotesis":"Setup A","request":{"m":"ALTA;A;62"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":816,"seq":"s14","step":{"hipotesis":"Setup B","request":{"m":"ALTA;B;59"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":817,"seq":"s14","step":{"hipotesis":"Fondear A con mucho (los fondos nunca limitan)","request":{"m":"DEPOSITO;AC-0001;100000000;54"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":818,"seq":"s14","step":{"hipotesis":"Limite: 50000 (sabemos que 50001 da E506; si 50000 pasa, el limite es 50000)","request":{"m":"TRANSFER;AC-0001;AC-0002;50000;59"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
+{"id":819,"seq":"s14","step":{"hipotesis":"Resetear contador con una transferencia chica","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0003\"}"}
+{"id":820,"seq":"s14","step":{"hipotesis":"Limite: 25000","request":{"m":"TRANSFER;AC-0001;AC-0002;25000;78"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0004\"}"}
+{"id":821,"seq":"s14","step":{"hipotesis":"Reset contador","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0005\"}"}
+{"id":822,"seq":"s14","step":{"hipotesis":"Limite: 10000","request":{"m":"TRANSFER;AC-0001;AC-0002;10000;70"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0006\"}"}
+{"id":823,"seq":"s14","step":{"hipotesis":"Reset contador","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0007\"}"}
+{"id":824,"seq":"s14","step":{"hipotesis":"Limite: 1000","request":{"m":"TRANSFER;AC-0001;AC-0002;1000;37"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0008\"}"}
+{"id":825,"seq":"s14","step":{"hipotesis":"Reset contador","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0009\"}"}
+{"id":826,"seq":"s14","step":{"hipotesis":"Saldo de B para ver el formato decimal","request":{"m":"CONSULTA;AC-0002;11"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0002\",\"saldo\":\"860.40\"}"}
+{"id":827,"seq":"s14","step":{"hipotesis":"Bloqueo: rechazo 1","request":{"m":"TRANSFER;AC-0001;AC-0002;99999999;22"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":828,"seq":"s14","step":{"hipotesis":"Bloqueo: rechazo 2","request":{"m":"TRANSFER;AC-0001;AC-0002;99999999;22"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":829,"seq":"s14","step":{"hipotesis":"Bloqueo: rechazo 3 (deberia bloquear)","request":{"m":"TRANSFER;AC-0001;AC-0002;99999999;22"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":830,"seq":"s14","step":{"hipotesis":"Primer intento contra bloqueada: 423 intentos:1","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":423,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\",\"intentos\":1}"}
+{"id":831,"seq":"s14","step":{"hipotesis":"Segundo intento contra bloqueada: intentos:2","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":423,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\",\"intentos\":2}"}
+{"id":832,"seq":"s14","step":{"hipotesis":"Deposito desbloquea? (200)","request":{"m":"DEPOSITO;AC-0001;10;77"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0010\"}"}
+{"id":833,"seq":"s14","step":{"hipotesis":"Tras deposito: transferencia chica pasa (desbloqueada, contador reiniciado)","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0011\"}"}
+{"id":834,"seq":"s14","step":{"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":\"999139.60\"}"}

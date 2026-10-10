@@ -1,0 +1,25 @@
+{
+  "seq": "s14",
+  "steps": [
+    {"hipotesis":"Setup A","request":{"m":"ALTA;A;62"}},
+    {"hipotesis":"Setup B","request":{"m":"ALTA;B;59"}},
+    {"hipotesis":"Fondear A con mucho (los fondos nunca limitan)","request":{"m":"DEPOSITO;AC-0001;100000000;54"}},
+    {"hipotesis":"Limite: 50000 (sabemos que 50001 da E506; si 50000 pasa, el limite es 50000)","request":{"m":"TRANSFER;AC-0001;AC-0002;50000;59"}},
+    {"hipotesis":"Resetear contador con una transferencia chica","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},
+    {"hipotesis":"Limite: 25000","request":{"m":"TRANSFER;AC-0001;AC-0002;25000;78"}},
+    {"hipotesis":"Reset contador","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},
+    {"hipotesis":"Limite: 10000","request":{"m":"TRANSFER;AC-0001;AC-0002;10000;70"}},
+    {"hipotesis":"Reset contador","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},
+    {"hipotesis":"Limite: 1000","request":{"m":"TRANSFER;AC-0001;AC-0002;1000;37"}},
+    {"hipotesis":"Reset contador","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},
+    {"hipotesis":"Saldo de B para ver el formato decimal","request":{"m":"CONSULTA;AC-0002;11"}},
+    {"hipotesis":"Bloqueo: rechazo 1","request":{"m":"TRANSFER;AC-0001;AC-0002;99999999;22"}},
+    {"hipotesis":"Bloqueo: rechazo 2","request":{"m":"TRANSFER;AC-0001;AC-0002;99999999;22"}},
+    {"hipotesis":"Bloqueo: rechazo 3 (deberia bloquear)","request":{"m":"TRANSFER;AC-0001;AC-0002;99999999;22"}},
+    {"hipotesis":"Primer intento contra bloqueada: 423 intentos:1","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},
+    {"hipotesis":"Segundo intento contra bloqueada: intentos:2","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},
+    {"hipotesis":"Deposito desbloquea? (200)","request":{"m":"DEPOSITO;AC-0001;10;77"}},
+    {"hipotesis":"Tras deposito: transferencia chica pasa (desbloqueada, contador reiniciado)","request":{"m":"TRANSFER;AC-0001;AC-0002;10;13"}},
+    {"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}}
+  ]
+}
