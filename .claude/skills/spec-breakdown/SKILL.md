@@ -1,24 +1,24 @@
 ---
 name: spec-breakdown
-description: Turns docs/SPEC.md into a numbered requirements matrix in docs/requirements.md. Use first, right after pasting the challenge statement.
+description: Rebuilds the requirements matrix in docs/requirements.md from the challenge brief, docs/SPEC.md and the experiment log. Use after the brief changes or after new experiments are logged.
 disable-model-invocation: true
 ---
 
-Read docs/SPEC.md carefully, twice.
+Read README-Reto2.md and docs/SPEC.md carefully, twice. Then read `experiments/conclusiones.json` (or docs/EXPERIMENTOS.md) for what has been proven.
 
-Rewrite docs/requirements.md with this table:
+Rewrite docs/requirements.md with one table for functional and one for non-functional requirements:
 
-| ID | Requirement | Type | Source (quote ≤ 10 words) | Edge cases | Tests | Status |
-|---|---|---|---|---|---|---|
+| ID | Requirement | Evidence (experiment ids) | Verified by (test or replay) | Status |
+|---|---|---|---|---|
 
-- ID: R1, R2, … Type: explicit or implicit.
-- Split compound sentences into atomic requirements.
-- Implicit requirements to look for: validation, error codes, idempotency, ordering, concurrency, limits, empty states.
-- Tests column starts empty. Status starts as TODO.
+- Keep the ids FR1–FR7 and NFR1–NFR6 and their wording as published in site/docs/index.html, section 02. Add new ids at the end; never renumber.
+- Evidence: `id` values from `experimentos.jsonl`. Leave "—" when nothing was probed; never invent an id.
+- Verified by: the replay (`node tools/diff.mjs`, name the sequences) or a named test.
+- Status: Implemented, Planned or Assumed. A requirement without evidence cannot be Implemented without a note.
 
-Then add these sections below the table:
-- **Ambiguities**: each with 2 possible readings and a recommended one.
-- **Risks**: what is most likely to break hidden tests.
-- **Suggested build order**: smallest end-to-end slice first.
+Then add below the tables:
+- **Open questions**: behaviors not probed yet, each with the replacement's current default (read `service/src`) and the confidence "assumed".
+- **Risks**: what is most likely to break hidden tests (two faults in one message, boundaries, a change in the original).
+- **Suggested experiments**: the cheapest probes that would close the open questions, as hypotheses, not as files.
 
-Do not write code. Stop and wait for the human to confirm the interpretations.
+Do not write code. Do not run `tools/probe.mjs`. Stop and wait for the human to confirm the interpretations.

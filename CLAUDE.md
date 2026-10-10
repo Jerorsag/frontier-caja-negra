@@ -2,97 +2,111 @@
 
 Working agreement for this repo. Read it fully before any task.
 
-## North star
-<!-- Fill this in during the first hour of the challenge. One measurable sentence. -->
-_TBD: e.g. "All spec cases pass, including edge cases X and Y; API responds < 200 ms; repo runs from scratch with README steps."_
+## Purpose
+Reto 2 "La caja negra" (Frontier hackathon, Lab10): understand an undocumented HTTP service from its answers alone and build a replacement that returns the same status and the same body, errors included. Three deliverables: the replacement, the specification, and the experiment log (`experimentos.jsonl`).
 
-The challenge spec lives in `docs/SPEC.md`; its breakdown in `docs/requirements.md`. When the spec and this file disagree, **the spec wins**.
+**North star:** at least 95 of the 100 hidden tests passing at 20:00, every documented behavior backed by a cited experiment, and zero false claims in the specification.
 
-## Roles
-- **Human (Jero)**: problem understanding, architecture, tradeoffs, final review of every diff.
-- **Main agent**: orchestrates. Delegates to subagents, integrates their work, never decides architecture silently: propose, then wait.
-- **Subagents** (`.claude/agents/`):
-
-| Agent | Writes code? | When |
-|---|---|---|
-| planner | No | Before building: critique the design against the spec |
-| test-engineer | Tests only | Before or alongside each requirement |
-| backend-engineer | Yes (`backend/`) | Implement API modules |
-| frontend-engineer | Yes (`frontend/`) | Only if the challenge needs a UI |
-| reviewer | No | After every change (proactive) |
-| docs-writer | Docs only | After each feature or decision (proactive) |
-
-## Skills (`.claude/skills/`)
-- `/spec-breakdown`: first step after pasting the statement into docs/SPEC.md.
-- `/adr <title>`: record every real decision.
-- `nest-module`: conventions for new backend modules (loaded automatically).
-- `/pre-submit`: final checklist before delivering.
+The brief is `README-Reto2.md`; my reading of it is `docs/SPEC.md`. When they disagree with this file, **the brief wins**.
 
 ## Repo layout
 ```
-backend/     NestJS API: src/, test/, prisma/, Dockerfile, .env
-frontend/    React + Vite app: src/
-docs/        SPEC, requirements, architecture, ADRs, API, testing, AI workflow
-.claude/     agents and skills
-package.json root scripts that orchestrate both apps (run commands from the root)
+service/           The replacement: plain node:http + TypeScript, no runtime dependencies
+  src/server.ts    Transport: routing, Bearer auth, X-Req, JSON reply
+  src/protocol.ts  Ordered validation pipeline and the six commands
+  src/control.ts   Checksum (pure function)
+  src/store.ts     In-memory state for one token
+  src/errors.ts    Every error: status + exact body
+  src/config.ts    Limits and token from the environment
+tools/             Exploration tooling (never deployed)
+experiments/       Experiment files (one per sequence), steps.jsonl (raw replay data), conclusiones.json
+experimentos.jsonl Official log: one line per request sent to the original (deliverable)
+pruebas/           ejemplos.jsonl: the 20 public examples
+site/              Static documentation site (Vercel, root directory `site`); the design doc is at /docs
+docs/              SPEC, requirements, architecture, ADRs, API, testing, AI workflow
+.claude/           Agents and skills
 ```
-
-## Workflow (always)
-1. **Understand**: run `/spec-breakdown`, then confirm the ambiguities with the human.
-2. **Plan**: short written plan with files to touch; planner critiques it. Wait for approval on non-trivial changes. Record real decisions with `/adr`.
-3. **Test first**: test-engineer writes failing tests that encode the spec.
-4. **Implement**: backend-engineer (or frontend-engineer) makes the smallest change that passes the tests.
-5. **Verify**: `npm run check` and `npm run test:e2e` from the root. All green before saying "done".
-6. **Review**: reviewer, then the human runs `/diff` and `/code-review`; fix findings.
-7. **Document**: docs-writer updates docs/ and the Status column of requirements.md.
-8. **Commit**: one logical change per commit, imperative message (`feat: add rate limiter`).
 
 ## Commands (from the repo root)
 | Purpose | Command |
 |---|---|
-| First-time setup (deps, .env, DB, migrations) | `npm run setup` |
-| Full check (backend + frontend) | `npm run check` |
-| Backend only: format, lint, types, unit | `npm run check:api` |
-| Frontend only: lint + build | `npm run check:web` |
-| Unit tests | `npm test` |
-| E2E tests (needs DB) | `npm run test:e2e` |
-| Start / stop DB | `npm run db:up` / `npm run db:down` |
-| New migration | `npm run migrate -- --name <change>` |
-| Regenerate Prisma client | `npm --prefix backend run prisma:generate` |
-| API dev server (:3000) | `npm run dev:api` |
-| Web dev server (:5173, proxy /api → :3000) | `npm run dev:web` |
+| Install the service | `npm --prefix service ci` |
+| Build the service | `npm --prefix service run build` |
+| Start the service (needs `TEAM_TOKEN`; `PORT` defaults to 3000) | `npm --prefix service start` |
+| Build and start it locally with the variables of `.env.tools` | `npm --prefix service run start:local` |
+| Unit and error-order tests | `npm --prefix service test` |
+| Run an experiment against the original and log it | `node tools/probe.mjs experiments/<file>.json` |
+| Replay the log and the public examples against the replacement | `node tools/diff.mjs --examples` |
+| Replay one sequence, or another target | `node tools/diff.mjs s06` · `node tools/diff.mjs --target <url>` |
+| Sign a message by hand | `node tools/control.mjs "ALTA;Lucia"` |
+| Merge conclusions into the log | `node tools/conclude.mjs experiments/conclusiones.json` |
+| Regenerate the readable log (`docs/EXPERIMENTOS.md`) | `node tools/view.mjs` |
+| Copy the log into the site (before every commit) | `node tools/build-site.mjs` |
 
-## Conventions
-- **Stack**: NestJS 11, TypeScript strict, Prisma 6, PostgreSQL 16, Jest. Web: React 19 + Vite + TypeScript.
-- **Structure**: one Nest module per domain in `backend/src/<domain>/` (see the nest-module skill).
-- **Controllers are thin**: parse, validate (DTO + class-validator), delegate. Logic lives in services.
-- **Validation**: every input goes through a DTO. The global `ValidationPipe` rejects unknown fields.
-- **Errors**: throw Nest `HttpException` subclasses. The global filter formats them. Never return error objects with status 200.
-- **Types**: no `any`. Explicit return types on public methods.
-- **Names and formats**: match the spec **exactly** (field names, routes, status codes, output formats). Hidden tests depend on it.
-- **DB**: schema changes only through Prisma migrations. Transactions for multi-step writes.
-- **Frontend**: all HTTP through `frontend/src/api.ts`; every view handles loading, empty, error and success.
-- **No new dependencies** without asking. Prefer the standard library.
-- **Determinism**: no hidden randomness or wall-clock dependence in logic; inject a clock if time matters.
+`tools/` reads `ORIGINAL_URL`, `TOKEN`, `REPLACEMENT_URL` and `REPLACEMENT_TOKEN` from `.env.tools` (gitignored).
+
+## Rules
+- **Never call the original from `service/`.** No outbound requests of any kind from the replacement. If it calls the original or another replacement, the hidden set scores 0.
+- **Log every request to the original through `tools/probe.mjs`.** No curl, no ad-hoc scripts, and never `tools/diff.mjs --target <original>`. One hypothesis per request.
+- **Never commit `.env.tools` or tokens.** The team token lives in the `TEAM_TOKEN` environment variable.
+- **Keep error bodies verbatim.** Accents, the typo `recieved`, `cuentaId` vs `cuenta_id` and the trailing space in E301 are part of the contract. Do not "fix" them.
+- **The error order is contract.** The first failing check answers. Do not reorder checks in `protocol.ts` without an experiment that proves the new order.
+- **`experimentos.jsonl` is an official deliverable.** Do not change its format, and do not edit `request`, `status` or `response` by hand; only `conclusion` is added afterwards.
+- **Never claim a behavior without evidence.** Cite experiment ids. Mark what was not probed as assumed (`supuesto` in the specification).
+- **Keep the replacement deterministic.** No randomness, clock, LLM or I/O in the request path. Handlers stay synchronous (no `await`): that is what makes locks unnecessary.
+- **No new dependencies** without asking. The service has none at runtime.
+- **Business limits go in `config.ts`** (environment variables), not in the rules.
+
+## Workflow
+1. **Hypothesis**: write an experiment file in `experiments/` with a new `seq` and one `hipotesis` per step.
+2. **Probe**: `node tools/probe.mjs experiments/<file>.json`. Then add conclusions with `tools/conclude.mjs`.
+3. **Implement**: the smallest change in `service/src` that matches the new evidence.
+4. **Verify**: `npm --prefix service test`, then start the service and run `node tools/diff.mjs --examples`. Sequences in `experiments/superseded.json` are reported as SKIP.
+5. **Review**: reviewer agent, then the human reads every diff.
+6. **Document**: update `docs/api.md`, `docs/requirements.md` and the specification; record real decisions with `/adr`.
+7. **Publish**: `node tools/view.mjs` and `node tools/build-site.mjs`.
+8. **Commit**: one logical change per commit, imperative message (`fix: lock counter resets on success`).
+
+## Roles
+- **Human (Jero)**: hypotheses, interpretation of results, architecture, trade-offs, final review of every diff.
+- **Main agent**: orchestrates. Never decides architecture silently: propose, then wait.
+- **Subagents** (`.claude/agents/`):
+
+| Agent | Writes code? | When |
+|---|---|---|
+| planner | No | Before building: critique a design or an experiment plan against the brief |
+| test-engineer | Tests and experiment files only | Before or alongside each rule |
+| backend-engineer | Yes (`service/src`) | Implement or change a rule once evidence exists |
+| reviewer | No | After every change |
+| docs-writer | Docs only | After each rule or decision |
+
+## Skills (`.claude/skills/`)
+- `/spec-breakdown`: rebuild `docs/requirements.md` from the brief and the log.
+- `/adr <title>`: record a real decision.
+- `/pre-submit`: final checklist before delivering.
 
 ## Definition of done
-- [ ] Requirement covered by at least one test, including edge cases (docs/requirements.md updated).
-- [ ] `npm run check` and `npm run test:e2e` pass (from the root).
-- [ ] Error paths tested (invalid input, not found, conflicts, empty collections, boundaries).
-- [ ] Real decisions recorded as ADRs and linked from the README.
-- [ ] docs/api.md matches the controllers.
+- [ ] The behavior is backed by at least one experiment id, or marked assumed.
+- [ ] `npm --prefix service test` and `node tools/diff.mjs --examples` pass (superseded sequences are skipped).
+- [ ] `docs/api.md` matches `service/src/errors.ts` and `protocol.ts`.
+- [ ] Real decisions are recorded as ADRs.
+- [ ] `site/docs/data/experimentos.jsonl` is up to date (`node tools/build-site.mjs`).
 
 ## Documentation map
-README (overview + decisions) → docs/architecture/system-design.md → docs/adr/ → docs/api.md → docs/testing.md → docs/requirements.md → docs/ai-workflow.md
+`README-Reto2.md` (brief) → `docs/SPEC.md` → `docs/requirements.md` → `docs/architecture/system-design.md` → `docs/adr/` → `docs/api.md` → `docs/testing.md` → `docs/ai-workflow.md`
 
 ## Decisions
-<!-- One line per decision: ADR-XXXX — decision — why. Added by the adr skill. -->
-- ADR-0001 — NestJS modular monolith — structure and testability for a one-day scope
-- ADR-0002 — PostgreSQL + Prisma — transactions, constraints, typed access
-- ADR-0003 — React + Vite frontend with a typed client — fast, independent, consistent errors
+- ADR-0001 — Layered monolith on plain node:http — control every response byte; one small domain
+- ADR-0002 — In-memory state, one store per token — one process, reset before every test
+- ADR-0003 — Validation as one ordered pipeline — the error order is contract
+- ADR-0004 — The experiment log is the regression suite — every rule proven against the oracle
+- ADR-0005 — Business limits in configuration — the original changes during the day
+- ADR-0006 — Deterministic rules, no LLM in the request path — exact-match scoring
+- ADR-0007 — Railway with a single replica; docs on Vercel — the evaluator talks to one process
 
 ## Things to never do
-- Edit tests just to make them pass without explaining why the test was wrong.
-- Write the implementation and the only tests for it in the same step.
-- Swallow errors (`catch {}` without handling or rethrow).
+- Send a request to the original that is not logged.
+- Edit a logged response, or delete a log line, to make a replay pass.
+- Change an error body, a field name or the order of checks without evidence.
+- Swallow errors (`catch {}` without handling or rethrow) outside the JSON-parse check.
 - Leave TODOs in delivered code without a note in the README.
