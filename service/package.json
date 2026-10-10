@@ -1,0 +1,18 @@
+{
+  "name": "caja-negra-replacement",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsc -p tsconfig.json && node dist/server.js",
+    "start:local": "tsc -p tsconfig.json && node --env-file=../.env.tools dist/server.js",
+    "test": "tsc -p tsconfig.json && node --test dist/control.test.js dist/protocol.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}
