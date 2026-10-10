@@ -279,3 +279,16 @@
 {"id":279,"seq":"s12","step":{"hipotesis":"Depósito a cuenta bloqueada (se acepta, reinicia contador)","request":{"m":"DEPOSITO;AC-0001;100;82"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
 {"id":280,"seq":"s12","step":{"hipotesis":"CLAVE: ¿transferir tras el depósito? 200 = el depósito LEVANTA el bloqueo; E510 = el bloqueo persiste","request":{"m":"TRANSFER;AC-0001;AC-0002;100;24"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0003\"}"}
 {"id":281,"seq":"s12","step":{"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":500000}"}
+{"id":412,"seq":"s13","step":{"hipotesis":"Setup A","request":{"m":"ALTA;A;62"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0001\"}"}
+{"id":413,"seq":"s13","step":{"hipotesis":"Setup B","request":{"m":"ALTA;B;59"}},"status":201,"rawText":"{\"cuentaId\":\"AC-0002\"}"}
+{"id":414,"seq":"s13","step":{"hipotesis":"Fondear B (no A) para una transferencia entrante despues","request":{"m":"DEPOSITO;AC-0002;1000;8"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0001\"}"}
+{"id":415,"seq":"s13","step":{"hipotesis":"Rechazo 1 por limite en A","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":416,"seq":"s13","step":{"hipotesis":"Rechazo 2 por limite en A","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":417,"seq":"s13","step":{"hipotesis":"Rechazo 3 por limite en A -> bloquea (sin deposito a A)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},"status":422,"rawText":"{\"error\":\"E506\",\"mensaje\":\"límite excedido\"}"}
+{"id":418,"seq":"s13","step":{"hipotesis":"E304 antes que E510: mismo origen y destino con A bloqueada","request":{"m":"TRANSFER;AC-0001;AC-0001;100;17"}},"status":400,"rawText":"{\"error\":\"E304\",\"mensaje\":\"origen y destino iguales\"}"}
+{"id":419,"seq":"s13","step":{"hipotesis":"E401 antes que E510: destino inexistente con A bloqueada","request":{"m":"TRANSFER;AC-0001;AC-9999;100;66"}},"status":404,"rawText":"{\"error\":\"E401\",\"mensaje\":\"cuenta inexistente\"}"}
+{"id":420,"seq":"s13","step":{"hipotesis":"E303 antes que E510: monto invalido con A bloqueada","request":{"m":"TRANSFER;AC-0001;AC-0002;abc;52"}},"status":400,"rawText":"{\"error\":\"E303\",\"mensaje\":\"monto inválido\"}"}
+{"id":421,"seq":"s13","step":{"hipotesis":"Confirmar que A sigue bloqueada (E510)","request":{"m":"TRANSFER;AC-0001;AC-0002;100;24"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":422,"seq":"s13","step":{"hipotesis":"Cuenta bloqueada RECIBE una transferencia entrante de B","request":{"m":"TRANSFER;AC-0002;AC-0001;100;12"}},"status":200,"rawText":"{\"status\":\"recieved\",\"operacionId\":\"OP-0002\"}"}
+{"id":423,"seq":"s13","step":{"hipotesis":"Tras recibir: A sigue bloqueada? E510 = entrante NO desbloquea","request":{"m":"TRANSFER;AC-0001;AC-0002;50;87"}},"status":409,"rawText":"{\"error\":\"E510\",\"mensaje\":\"cuenta bloqueada\"}"}
+{"id":424,"seq":"s13","step":{"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}},"status":200,"rawText":"{\"cuenta_id\":\"AC-0001\",\"saldo\":100}"}

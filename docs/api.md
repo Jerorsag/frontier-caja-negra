@@ -112,7 +112,7 @@ The control is compared as exact text: `3` is valid where `03` is not. Evidence:
 - Lock: 3 consecutive rejected transfers from the same source lock it. A rejection is an E506 (limit) or an E507 (insufficient funds); three E507 alone are enough. From then on every transfer from it is 409 E510, even with a valid amount. Evidence: 99–103, 127–134, 149–153, 168–171.
 - The count is reset by a successful transfer from the account and by a successful deposit into it. Evidence: 127–130, 175–179.
 - A successful deposit into a locked account lifts the lock (confirmed): locked (278), deposit (279), then a transfer of a valid amount is accepted (280) and the balance matches (281).
-- The lock applies to the source only: a locked account still receives transfers. **Assumed:** experiment 136 was meant to show it, but it ran after the deposit of 135, which had already lifted the lock.
+- The lock applies to the source only: a locked account still receives transfers (confirmed: 422, s13). An incoming transfer does not lift the lock (confirmed: 422–423, s13): after it, a transfer out is still 409 E510.
 - Rejected transfers move no money and consume no operation id. Evidence: 111, 112.
 - Apart from a deposit and `POST /__reset`, nothing else is known to lift a lock; it does not expire with time or with other commands. **Assumed.**
 
@@ -228,14 +228,14 @@ The `mensaje` keeps its trailing space with and without a suggestion, whatever t
 | E303 (amount) | E304 (same account) | 88 |
 | E303 (amount) | E401 (account) | 86 |
 | E304 (same account) | E401 (account) | 87 |
-| E303, E304, E401 | E510 (lock) | **assumed** (see below) |
+| E303, E304, E401 | E510 (lock) | 412–421 (s13, confirmed) |
 | E510 (lock) | E506 (limit) | 104 |
 | E510 (lock) | E507 (balance) | 105 |
 | E506 (limit) | E507 (balance) | 108 |
 
 Arity (E302) is evaluated before the amount (154, 172), before same account (173) and before a missing account (155, 174).
 
-E303, E304 and E401 before E510 is **assumed**. Experiments 137–139 were meant to pin it, but they ran after the deposit of 135, and a deposit lifts the lock (278–280), so the account was no longer locked. The replacement keeps that order, which follows the order of `service/src/protocol.ts`.
+E303, E304 and E401 before E510 is confirmed by s13 (412–421). On a locked source, the same source and destination (418) answers 400 E304, an unknown destination (419) 404 E401 and an invalid amount (420) 400 E303; a valid transfer answers 409 E510 (421). Experiments 137–139 show the same order, but they ran after the deposit of 135 had lifted the lock, so they do not prove it by themselves. The replacement keeps that order, which follows the order of `service/src/protocol.ts`.
 
 ## Changes during the day
 

@@ -49,4 +49,5 @@ Also confirmed by s07: arity (E302) is evaluated before the amount (E303, experi
 | Does `HALT` validate its argument? | No: any single argument answers E520. Only an existing account id was probed (259) | assumed |
 | Which command does E301 suggest when two are equally near? | The first in the order `PING`, `ALTA`, `CONSULTA`, `DEPOSITO`, `TRANSFER`, `ANULA`, `NOTAS`, `HALT`. No tie was probed | assumed |
 | Does a deposit unlock an account that is already locked? | Yes: a successful deposit resets the rejection count (175–179) and lifts the lock (278–281) | confirmed (272–281) |
-| Are E303, E304 and E401 evaluated before E510 on a locked source? | Yes, by the order of the code. Experiments 137–139 no longer prove it: the deposit of 135 had lifted the lock | assumed |
+| Are E303, E304 and E401 evaluated before E510 on a locked source? | Yes, by the order of the code: E304 (418), E401 (419) and E303 (420) answer before E510 (421) | confirmed (412–421, s13) |
+| Does an incoming transfer lift the lock on its destination? | No: the locked account accepts the transfer (422), and its next transfer out is still E510 (423) | confirmed (422–423, s13) |

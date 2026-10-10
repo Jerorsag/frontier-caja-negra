@@ -1,0 +1,18 @@
+{
+  "seq": "s13",
+  "steps": [
+    {"hipotesis":"Setup A","request":{"m":"ALTA;A;62"}},
+    {"hipotesis":"Setup B","request":{"m":"ALTA;B;59"}},
+    {"hipotesis":"Fondear B (no A) para una transferencia entrante despues","request":{"m":"DEPOSITO;AC-0002;1000;8"}},
+    {"hipotesis":"Rechazo 1 por limite en A","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},
+    {"hipotesis":"Rechazo 2 por limite en A","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},
+    {"hipotesis":"Rechazo 3 por limite en A -> bloquea (sin deposito a A)","request":{"m":"TRANSFER;AC-0001;AC-0002;100001;9"}},
+    {"hipotesis":"E304 antes que E510: mismo origen y destino con A bloqueada","request":{"m":"TRANSFER;AC-0001;AC-0001;100;17"}},
+    {"hipotesis":"E401 antes que E510: destino inexistente con A bloqueada","request":{"m":"TRANSFER;AC-0001;AC-9999;100;66"}},
+    {"hipotesis":"E303 antes que E510: monto invalido con A bloqueada","request":{"m":"TRANSFER;AC-0001;AC-0002;abc;52"}},
+    {"hipotesis":"Confirmar que A sigue bloqueada (E510)","request":{"m":"TRANSFER;AC-0001;AC-0002;100;24"}},
+    {"hipotesis":"Cuenta bloqueada RECIBE una transferencia entrante de B","request":{"m":"TRANSFER;AC-0002;AC-0001;100;12"}},
+    {"hipotesis":"Tras recibir: A sigue bloqueada? E510 = entrante NO desbloquea","request":{"m":"TRANSFER;AC-0001;AC-0002;50;87"}},
+    {"hipotesis":"Saldo final de A","request":{"m":"CONSULTA;AC-0001;14"}}
+  ]
+}

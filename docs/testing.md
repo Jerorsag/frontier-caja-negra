@@ -80,7 +80,7 @@ Also in `service/src/protocol.test.ts`: one test per pair of checks, each reques
 | E303 before E304 | bad amount, same account | 88 |
 | E303 before E401 | bad amount, unknown account | 86 |
 | E304 before E401 | same account that does not exist | 87 |
-| E303, E304, E401 before E510 | each fault on a locked source | 139, 137, 138 |
+| E303, E304, E401 before E510 | each fault on a locked source | 412–420 (s13) |
 | E510 before E506 and E507 | locked source, over the limit and over the balance | 104, 105 |
 | E506 before E507 | over the limit with balance 0 | 108 |
 
