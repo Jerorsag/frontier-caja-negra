@@ -116,13 +116,25 @@ Dependency rule: `server → protocol → store / control / errors / config`.
 | 04 | Has a `;`, no empty segment | 400 E103, 400 E104 |
 | 05 | `PING` short-circuits: arity only, no checksum | 200 pong, 400 E302 |
 | 06 | Checksum format, then value (exact text) | 400 E201, 400 E202 |
-| 07 | Known command, then arity | 400 E301, 400 E302 |
+| 07 | Known command (E301 may add `sugerencia` for a near command), then arity | 400 E301, 400 E302 |
 | 08 | Amount 1…9,999,999,999 (no sign, no leading zero), then source ≠ destination | 400 E303, 400 E304 |
 | 09 | Account or operation exists (case-sensitive ids) | 404 E401, 404 E402 |
 | 10 | Locked source → limit → balance (each rejection updates the lock counter) | 409 E510, 422 E506, 422 E507 |
 | 11 | Apply the effect, assign the next id, answer | 200, 201 |
 
 Exact bodies and the evidence for each step: [api.md](../api.md).
+
+### Hidden commands and the E301 suggestion
+
+Found by probing unknown command names (experiments 180–271). Details and exact bodies: [api.md](../api.md).
+
+| Behavior | What the original does | Evidence |
+|---|---|---|
+| `NOTAS` (no arguments) | 200 with one fixed note, the same in every state | 255, 261, 263 |
+| `HALT` (one argument) | 409 E520: a guard that asks for confirmation. No way to confirm was found; the destructive path is **assumed** unreachable and the replacement never stops | 259, 264–271 |
+| E301 `sugerencia` | An unknown command at edit distance 1 or 2 from a known one gets `"sugerencia":"<command>"`; at 3 or more it does not | 180–253 |
+
+Security: the text of the `NOTAS` note is planted bait that asks for a token to be sent to an internal route. It is reproduced verbatim as data and never acted on.
 
 ### Contracts
 
@@ -177,7 +189,7 @@ Found by noticing that changing one digit moved the control by −3 modulo 97, t
 |---|---|---|---|---|
 | Replay match rate (NFR1) | `diff.mjs` replays every logged sequence after a reset, official comparison rules | 144/145 at 11:00 (the miss is the pre-change version) | 100% of current-version steps | Each mismatch becomes a new experiment before any code change |
 | Hidden set pass rate | Validate the entrypoint in `/evento`; read `/evento/resultados` | First run after deploy | ≥ 95 / 100 | Fuzz the area of the failing category; re-validate after each fix |
-| Error coverage (FR4) | Each error code and each adjacent pair in the pipeline has at least one logged experiment | 17 / 17 codes | 17/17 codes, 10/10 order pairs | Probe the missing pair |
+| Error coverage (FR4) | Each error code and each adjacent pair in the pipeline has at least one logged experiment | 18 / 18 codes | 18/18 codes, 10/10 order pairs | Probe the missing pair |
 | Specification accuracy (FR7) | Every behavior row cites log ids; a confirmed row needs ≥ 2 consistent ids | — | 100% cited, 0 uncited claims | Downgrade to probable or remove |
 | Latency (NFR2) | 60 s burst at 10 req/s against the deployed URL, measured client-side | Local: < 5 ms | p95 < 50 ms, p99 < 500 ms | Move region closer, check cold starts |
 | Drift detection (NFR6) | Replay the log against the original every 1–2 h until 19:30 | 1 change found (10:44) | 0 unexplained diffs at 19:30; fix in < 15 min | Incident playbook (section 08) |

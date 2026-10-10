@@ -1,0 +1,16 @@
+{
+  "seq": "s11",
+  "steps": [
+    {"hipotesis":"NOTAS es estable: misma respuesta en limpio","request":{"m":"NOTAS;11"}},
+    {"hipotesis":"Setup: una cuenta","request":{"m":"ALTA;Ana;50"}},
+    {"hipotesis":"¿NOTAS cambia con el estado? (tras crear una cuenta)","request":{"m":"NOTAS;11"}},
+    {"hipotesis":"Confirmación como 2.º argumento: ¿E302 (aridad 1 estricta), E520 o detiene?","request":{"m":"HALT;AC-0001;CONFIRM;9"}},
+    {"hipotesis":"Confirmación 2.º arg: CONFIRMAR","request":{"m":"HALT;AC-0001;CONFIRMAR;81"}},
+    {"hipotesis":"Confirmación 2.º arg: SI","request":{"m":"HALT;AC-0001;SI;88"}},
+    {"hipotesis":"Confirmación 2.º arg: FORCE","request":{"m":"HALT;AC-0001;FORCE;52"}},
+    {"hipotesis":"¿El servicio sigue vivo tras los intentos?","request":{"m":"PING;1"}},
+    {"hipotesis":"Hipótesis reenvío idéntico: 1.er HALT (pide confirmación)","request":{"m":"HALT;AC-0001;82"}},
+    {"hipotesis":"Reenvío idéntico: 2.º HALT igual (¿confirma y detiene?)","request":{"m":"HALT;AC-0001;82"}},
+    {"hipotesis":"¿El servicio responde después del reenvío?","request":{"m":"PING;1"}}
+  ]
+}

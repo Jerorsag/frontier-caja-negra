@@ -1,6 +1,7 @@
 // Protocol tests: handleMessage is called directly, no HTTP.
 // Expected answers are the original's; #N is the experiment id in experimentos.jsonl that shows it.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { control } from './control.js';
 import { E, type Reply } from './errors.js';
@@ -34,6 +35,17 @@ function lockedSource(deposit?: number): Store {
   for (let i = 0; i < 3; i++) assert.deepEqual(msg(store, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
   return store;
 }
+
+/** What the original answered in experiment #id (dist/protocol.test.js → <repo>/experimentos.jsonl). */
+const logged = (id: number): Reply => {
+  const line = readFileSync(new URL('../../experimentos.jsonl', import.meta.url), 'utf8')
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((l) => JSON.parse(l) as { id: number; status: number; response: unknown })
+    .find((l) => l.id === id);
+  assert.ok(line, `experiment ${id} is not in the log`);
+  return { status: line.status, body: line.response };
+};
 
 // ── Body and segments ────────────────────────────────────────────────────────
 
@@ -221,6 +233,83 @@ test('a locked account still receives deposits and transfers (#135, #136)', () =
 
 test('CONSULTA works on a locked account and does not show the lock (#106)', () => {
   assert.deepEqual(msg(lockedSource(1000), 'CONSULTA;AC-0001'), { status: 200, body: { cuenta_id: 'AC-0001', saldo: 1000 } });
+});
+
+// ── Deposit and the lock counter ─────────────────────────────────────────────
+
+test('a successful deposit resets the rejection count: E506, E506, DEPOSITO, E506, then a small transfer is OK (#175–179)', () => {
+  const s = twoAccounts(1000);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded);
+  assert.deepEqual(msg(s, 'DEPOSITO;AC-0001;1'), received('OP-0002'));
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;100001'), E.limitExceeded); // 1st again, not the 3rd
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;1'), received('OP-0003'));
+});
+
+test('three consecutive E507 alone lock the source (#168–171)', () => {
+  const s = twoAccounts(1000);
+  for (let i = 0; i < 3; i++) assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;5000'), E.insufficientFunds);
+  assert.deepEqual(msg(s, 'TRANSFER;AC-0001;AC-0002;10'), E.accountLocked);
+});
+
+test('E302 before E304: wrong arity with the same account (#173)', () => {
+  assert.deepEqual(raw(twoAccounts(), 'TRANSFER;AC-0001;AC-0001;10;x;89'), E.invalidArity);
+});
+
+// ── NOTAS and HALT ───────────────────────────────────────────────────────────
+
+test('NOTAS with no arguments returns the note exactly as the original did (#255)', () => {
+  assert.deepEqual(raw(new Store(), 'NOTAS;11'), logged(255));
+});
+
+test('NOTAS does not depend on the state (#261, #263)', () => {
+  const s = twoAccounts(500);
+  assert.deepEqual(msg(s, 'NOTAS'), logged(263));
+  assert.deepEqual(msg(s, 'notas'), logged(261));
+});
+
+test('NOTAS with an argument is E302 (#256, #257)', () => {
+  const s = twoAccounts();
+  assert.deepEqual(raw(s, 'NOTAS;AC-0001;14'), E.invalidArity);
+  assert.deepEqual(raw(s, 'NOTAS;AC-0001;hola;68'), E.invalidArity);
+});
+
+test('HALT with one argument is the E520 guard, exactly as the original (#259)', () => {
+  assert.deepEqual(raw(twoAccounts(), 'HALT;AC-0001;82'), logged(259));
+  assert.deepEqual(logged(259), E.haltGuard);
+});
+
+test('HALT with no argument or with two is E302 (#258, #264)', () => {
+  const s = twoAccounts();
+  assert.deepEqual(raw(s, 'HALT;71'), E.invalidArity);
+  assert.deepEqual(raw(s, 'HALT;AC-0001;CONFIRM;9'), E.invalidArity);
+});
+
+test('resending HALT does not confirm it, and the service keeps answering (#269–271)', () => {
+  const s = twoAccounts(100);
+  assert.deepEqual(raw(s, 'HALT;AC-0001;82'), E.haltGuard);
+  assert.deepEqual(raw(s, 'HALT;AC-0001;82'), E.haltGuard);
+  assert.deepEqual(raw(s, 'PING;1'), { status: 200, body: { pong: true } });
+  assert.equal(balance(s, 'AC-0001'), 100);
+});
+
+// ── E301 sugerencia ──────────────────────────────────────────────────────────
+
+test('E301 suggests ALTA for ALTO: distance 1 (#252)', () => {
+  assert.deepEqual(raw(new Store(), 'ALTO;50'), logged(252));
+  assert.deepEqual(logged(252).body, { error: 'E301', mensaje: 'comando desconocido ', sugerencia: 'ALTA' });
+});
+
+test('E301 suggests HALT for HELP: distance 2 (#201)', () => {
+  assert.deepEqual(raw(new Store(), 'HELP;72'), logged(201));
+  assert.deepEqual(logged(201).body, { error: 'E301', mensaje: 'comando desconocido ', sugerencia: 'HALT' });
+});
+
+test('E301 has no sugerencia at distance 3 or more: SALDO, DEBITO, QX (#182, #218, #230)', () => {
+  for (const [m, id] of [['SALDO;38', 182], ['DEBITO;4', 218], ['QX;67', 230]] as const) {
+    assert.deepEqual(raw(new Store(), m), E.unknownCommand, m);
+    assert.deepEqual(logged(id), E.unknownCommand, m);
+  }
 });
 
 // ── ANULA ────────────────────────────────────────────────────────────────────

@@ -24,4 +24,5 @@ export const E = {
   limitExceeded: err(422, 'E506', 'límite excedido'),
   insufficientFunds: err(422, 'E507', 'saldo insuficiente'),
   accountLocked: err(409, 'E510', 'cuenta bloqueada'),
+  haltGuard: err(409, 'E520', 'operación destructiva: detiene el servicio; reenvía con confirmación'), // exp. 259, verbatim
 } as const;

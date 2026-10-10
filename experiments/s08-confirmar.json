@@ -1,0 +1,20 @@
+{
+  "seq": "s08",
+  "steps": [
+    { "hipotesis": "Setup: cuenta A", "request": { "m": "ALTA;A;62" } },
+    { "hipotesis": "Setup: cuenta B", "request": { "m": "ALTA;B;59" } },
+    { "hipotesis": "Setup: saldo 1000 en A", "request": { "m": "DEPOSITO;AC-0001;1000;35" } },
+    { "hipotesis": "Bloqueo solo con E507: rechazo por saldo #1", "request": { "m": "TRANSFER;AC-0001;AC-0002;5000;65" } },
+    { "hipotesis": "Bloqueo solo con E507: rechazo por saldo #2", "request": { "m": "TRANSFER;AC-0001;AC-0002;5000;65" } },
+    { "hipotesis": "Bloqueo solo con E507: rechazo por saldo #3", "request": { "m": "TRANSFER;AC-0001;AC-0002;5000;65" } },
+    { "hipotesis": "Tras 3 E507 seguidos: ¿E510? (repite la regla de #149-153 sin E506)", "request": { "m": "TRANSFER;AC-0001;AC-0002;10;13" } },
+    { "hipotesis": "Repetición de #154: aridad antes que monto inválido", "request": { "m": "DEPOSITO;AC-0002;abc;x;83" } },
+    { "hipotesis": "Aridad antes que origen = destino (E302 vs E304)", "request": { "m": "TRANSFER;AC-0001;AC-0001;10;x;89" } },
+    { "hipotesis": "Repetición de #155: aridad antes que cuenta inexistente", "request": { "m": "CONSULTA;AC-0099;x;56" } },
+    { "hipotesis": "Contador en B: E506 #1", "request": { "m": "TRANSFER;AC-0002;AC-0001;100001;37" } },
+    { "hipotesis": "Contador en B: E506 #2", "request": { "m": "TRANSFER;AC-0002;AC-0001;100001;37" } },
+    { "hipotesis": "¿Un DEPOSITO exitoso reinicia el contador de rechazos?", "request": { "m": "DEPOSITO;AC-0002;1;95" } },
+    { "hipotesis": "E506 #3 (o #1 si el depósito reinició el contador)", "request": { "m": "TRANSFER;AC-0002;AC-0001;100001;37" } },
+    { "hipotesis": "Si sale E510: el depósito no reinicia; si sale OK: sí reinicia", "request": { "m": "TRANSFER;AC-0002;AC-0001;1;37" } }
+  ]
+}

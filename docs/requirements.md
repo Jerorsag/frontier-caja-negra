@@ -16,7 +16,7 @@ How to read **Status**:
 | FR2 | Any other route, method or body answers exactly like the original, unknown routes included. | 13–15, 18, 19, 35–38 | Replay of s01 and s02 | Implemented |
 | FR3 | Requests without the team token, or with another token, answer like the original (401). | 11, 12, 17, 20, 39 | Replay of s01 and s02 | Implemented |
 | FR4 | Validate message integrity (format, segments, checksum) in the original's order. | 4–10, 22–26, 43, 45 | Replay of s01–s02; error-order tests in `service/src/protocol.test.ts` | Implemented |
-| FR5 | Implement the six commands (`PING`, `ALTA`, `CONSULTA`, `DEPOSITO`, `TRANSFER`, `ANULA`) with their effects and exact responses. | Public examples 1–20; s03–s06 (42–145) | Replay of s03–s06 and `--examples` | Implemented |
+| FR5 | Implement the six commands (`PING`, `ALTA`, `CONSULTA`, `DEPOSITO`, `TRANSFER`, `ANULA`) with their effects and exact responses. Found later by probing and also implemented: two hidden commands, `NOTAS` and `HALT` (255–271), and the `sugerencia` field of E301 (180–253). | Public examples 1–20; s03–s06 (42–145) | Replay of s03–s06 and `--examples` | Implemented |
 | FR6 | Keep memory between requests: accounts, balances, operations, lock counters, sequential ids. | 46–47, 59, 102, 134, 149–153 | Replay of s04–s07; lock tests in `service/src/protocol.test.ts` | Implemented |
 | FR7 | Deliver the specification and `experimentos.jsonl` in the required format. | Brief (README-Reto2.md) | Manual review against the brief | Log delivered (145 lines); specification planned |
 
@@ -45,3 +45,7 @@ Also confirmed by s07: arity (E302) is evaluated before the amount (E303, experi
 | Body size limit, duplicate JSON keys, non-UTF-8 bytes | No size limit; `JSON.parse` semantics | assumed |
 | `HEAD` and `OPTIONS` on known routes | 404 E404, like any other unknown method | assumed |
 | What happens after `AC-9999` or `OP-9999`? | The number keeps growing (`AC-10000`) | assumed |
+| What does `HALT` do once confirmed, and how is it confirmed? | Unknown. A second argument is E302 and resending is E520 again (264–270). The replacement always answers E520 and never stops | assumed |
+| Does `HALT` validate its argument? | No: any single argument answers E520. Only an existing account id was probed (259) | assumed |
+| Which command does E301 suggest when two are equally near? | The first in the order `PING`, `ALTA`, `CONSULTA`, `DEPOSITO`, `TRANSFER`, `ANULA`, `NOTAS`, `HALT`. No tie was probed | assumed |
+| Does a deposit unlock an account that is already locked? | No: it resets the rejection count (175–179) but the lock stays | assumed |

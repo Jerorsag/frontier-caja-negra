@@ -14,7 +14,7 @@ Run from the repo root and report each item as PASS or FAIL with evidence. Never
 6. `experimentos.jsonl`: every line parses as JSON and has `id`, `seq`, `x_req`, `hipotesis`, `request`, `status`, `response`; ids are unique.
 7. `site/docs/data/experimentos.jsonl` is identical to `experimentos.jsonl` (run `node tools/build-site.mjs` if not), and docs/EXPERIMENTOS.md is current (`node tools/view.mjs`).
 8. The specification exists, has the seven sections of the brief, and every row cites at least one log id and a confidence (`confirmado`, `probable`, `supuesto`).
-9. docs/api.md matches `service/src/errors.ts` (17 codes, exact bodies) and the order of checks in `service/src/protocol.ts`.
+9. docs/api.md matches `service/src/errors.ts` (18 codes, exact bodies) and the order of checks in `service/src/protocol.ts`.
 10. Every row of docs/requirements.md has a status; every "assumed" item is also `supuesto` in the specification.
 11. Every ADR in docs/adr/ is listed in CLAUDE.md and linked from docs/architecture/system-design.md.
 12. No secrets: `.env.tools` is not tracked, and no token appears in the repo (`git grep` for the token value and for `Bearer `).
