@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 concurrency:
@@ -10,73 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: backend
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: app
-          POSTGRES_PASSWORD: app
-          POSTGRES_DB: app
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U app -d app"
-          --health-interval 3s
-          --health-timeout 3s
-          --health-retries 20
-
-    env:
-      DATABASE_URL: postgresql://app:app@localhost:5432/app?schema=public
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Prisma generate
-        run: npx prisma generate
-
-      - name: Format
-        run: npm run format:check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Migrate database
-        run: npx prisma migrate deploy
-
-      - name: E2E tests
-        run: npm run test:e2e
-
-      - name: Build
-        run: npm run build
-
-  frontend:
+  replacement:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: frontend
+
+    env:
+      TEAM_TOKEN: ci-token
+      REPLACEMENT_TOKEN: ci-token
+      REPLACEMENT_URL: http://localhost:3000
+      PORT: 3000
 
     steps:
       - uses: actions/checkout@v4
@@ -85,13 +27,28 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: service/package-lock.json
 
       - name: Install
-        run: npm ci
+        run: npm --prefix service ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Typecheck, build, unit and error-order tests
+        run: npm --prefix service test
 
-      - name: Build
-        run: npm run build
+      - name: Start the replacement
+        run: |
+          node service/dist/server.js > server.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl -sf -H "Authorization: Bearer $TEAM_TOKEN" http://localhost:3000/health; then
+              echo " ready"; exit 0
+            fi
+            sleep 1
+          done
+          cat server.log; exit 1
+
+      - name: Replay official examples and every logged sequence
+        run: node tools/diff.mjs --examples
+
+      - name: Server log
+        if: always()
+        run: cat server.log || true
