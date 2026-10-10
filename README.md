@@ -2,7 +2,7 @@
 
 > A drop-in replacement for a 10-year-old banking message service with no source code and no documentation, rebuilt only from its responses. Built in one day for the Frontier hackathon (Lab10), Reto 2 "La caja negra".
 
-**Design document:** https://frontier-caja-negra-site.vercel.app/docs · **Entrypoint:** `https://<tu-dominio>.up.railway.app`
+**Design document:** https://frontier-caja-negra-site.vercel.app/docs · **Entrypoint:** frontier-caja-negra-production-78b3.up.railway.app
 
 ## Problem
 
