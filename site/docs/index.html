@@ -378,6 +378,39 @@ td.mono{white-space:nowrap}
       <figcaption lang="es">Límite de confianza: la autenticación ocurre en el borde del reemplazo; la línea roja punteada marca la dependencia que nunca debe existir.</figcaption>
     </figure>
 
+    <h3 lang="en" style="margin-top:36px">Architectural style: a layered monolith with a validation pipeline</h3>
+    <h3 lang="es" style="margin-top:36px">Estilo arquitectónico: monolito en capas con un pipeline de validación</h3>
+    <p class="section-lead" lang="en">One process, four layers. Dependencies point only downward, so the protocol can be tested without HTTP and the state knows nothing about the rules. Inside the application layer, validation is a pipes-and-filters chain where the first failing check answers.</p>
+    <p class="section-lead" lang="es">Un proceso, cuatro capas. Las dependencias solo apuntan hacia abajo: el protocolo se prueba sin HTTP y el estado no conoce las reglas. Dentro de la capa de aplicación, la validación es una cadena tipo pipes-and-filters donde responde el primer chequeo que falla.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Layer</span><span lang="es">Capa</span></th><th><span lang="en">Files</span><span lang="es">Archivos</span></th><th><span lang="en">Responsibility</span><span lang="es">Responsabilidad</span></th><th><span lang="en">Does not know</span><span lang="es">No conoce</span></th></tr></thead>
+        <tbody>
+          <tr><td><span lang="en">Transport</span><span lang="es">Transporte</span></td><td><code>server.ts</code></td><td><span lang="en">Routing, Bearer auth, X-Req, JSON reply, structured log</span><span lang="es">Rutas, auth Bearer, X-Req, respuesta JSON, log estructurado</span></td><td><span lang="en">Accounts or business rules</span><span lang="es">Cuentas ni reglas de negocio</span></td></tr>
+          <tr><td><span lang="en">Application</span><span lang="es">Aplicación</span></td><td><code>protocol.ts</code> (pipeline)</td><td><span lang="en">Order of checks, dispatch to the command</span><span lang="es">Orden de chequeos, despacho al comando</span></td><td>HTTP, headers</td></tr>
+          <tr><td><span lang="en">Domain</span><span lang="es">Dominio</span></td><td><code>protocol.ts</code> (<span lang="en">commands</span><span lang="es">comandos</span>), <code>control.ts</code></td><td><span lang="en">Amounts, limit, lock, reversals, checksum (pure function)</span><span lang="es">Montos, límite, bloqueo, anulaciones, checksum (función pura)</span></td><td><span lang="en">How the message arrived</span><span lang="es">Cómo llegó el mensaje</span></td></tr>
+          <tr><td><span lang="en">State</span><span lang="es">Estado</span></td><td><code>store.ts</code></td><td><span lang="en">Accounts, operations, id sequences per token, in memory</span><span lang="es">Cuentas, operaciones, secuencias de ids por token, en memoria</span></td><td><span lang="en">Any rule</span><span lang="es">Ninguna regla</span></td></tr>
+          <tr><td><span lang="en">Cross-cutting</span><span lang="es">Transversal</span></td><td><code>errors.ts</code>, <code>config.ts</code></td><td><span lang="en">Error catalog verbatim; limits from environment</span><span lang="es">Catálogo de errores literal; límites desde el entorno</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-lead" lang="en" style="margin-top:12px">Dependency rule: server → protocol → store / control / errors / config.</p>
+    <p class="section-lead" lang="es" style="margin-top:12px">Regla de dependencias: server → protocol → store / control / errors / config.</p>
+
+    <h3 lang="en">Exploration tooling (not deployed)</h3>
+    <h3 lang="es">Herramientas de exploración (no se despliegan)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><span lang="en">Tool</span><span lang="es">Herramienta</span></th><th><span lang="en">What it does</span><span lang="es">Qué hace</span></th></tr></thead>
+        <tbody>
+          <tr><td><code>tools/probe.mjs</code></td><td><span lang="en">Sends an experiment to the original after a reset and appends each request to <code>experimentos.jsonl</code></span><span lang="es">Envía un experimento al original tras un reset y agrega cada request a <code>experimentos.jsonl</code></span></td></tr>
+          <tr><td><code>tools/diff.mjs</code></td><td><span lang="en">Replays logged sequences against a target with the official comparison rules</span><span lang="es">Reproduce las secuencias del log contra un destino con las reglas oficiales de comparación</span></td></tr>
+          <tr><td><code>tools/control.mjs</code></td><td><span lang="en">Computes the checksum for hand-written experiments</span><span lang="es">Calcula el checksum para experimentos escritos a mano</span></td></tr>
+          <tr><td><code>tools/conclude.mjs</code>, <code>view.mjs</code>, <code>build-site.mjs</code></td><td><span lang="en">Write conclusions, render the readable log, publish the log to this site</span><span lang="es">Escriben conclusiones, generan el log legible, publican el log en este sitio</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <h3 lang="en" style="margin-top:36px">Components and responsibilities</h3>
     <h3 lang="es" style="margin-top:36px">Componentes y responsabilidades</h3>
     <div class="table-wrap">
@@ -471,6 +504,7 @@ td.mono{white-space:nowrap}
       <table>
         <thead><tr><th><span lang="en">Decision</span><span lang="es">Decisión</span></th><th><span lang="en">Discarded alternative</span><span lang="es">Alternativa descartada</span></th><th><span lang="en">Justification (requirement it serves)</span><span lang="es">Justificación (requisito que cumple)</span></th><th><span lang="en">Accepted cost</span><span lang="es">Costo aceptado</span></th></tr></thead>
         <tbody>
+          <tr><td><span lang="en">Layered monolith, single process</span><span lang="es">Monolito en capas, un solo proceso</span></td><td><span lang="en">Microservices; modular monolith (NestJS modules)</span><span lang="es">Microservicios; monolito modular (módulos NestJS)</span></td><td><span lang="en">One small domain, shared in-memory state and one process required by the evaluator; services would add network hops and failure modes, and per-domain modules add structure with a single domain</span><span lang="es">Un dominio pequeño, estado en memoria compartido y un solo proceso exigido por el evaluador; los servicios agregan saltos de red y modos de falla, y los módulos por dominio agregan estructura con un solo dominio</span></td><td><span lang="en">No independent scaling or deployment of parts</span><span lang="es">Sin escalado ni despliegue independiente de partes</span></td></tr>
           <tr><td><span lang="en">Plain <code>node:http</code> + TypeScript</span><span lang="es"><code>node:http</code> puro + TypeScript</span></td><td>NestJS / Express</td><td><span lang="en">FR2, NFR1: frameworks answer unknown routes and bad JSON with their own bodies; we must control every byte</span><span lang="es">FR2, NFR1: los frameworks responden rutas inexistentes y JSON inválido con sus propios cuerpos; necesitamos controlar cada byte</span></td><td><span lang="en">Routing and body parsing by hand</span><span lang="es">Ruteo y parsing a mano</span></td></tr>
           <tr><td><span lang="en">In-memory state, one store per token</span><span lang="es">Estado en memoria, un store por token</span></td><td>PostgreSQL</td><td><span lang="en">NFR2, FR1: one process, reset before every test, 5 s per step; a database adds latency and failure modes with no benefit</span><span lang="es">NFR2, FR1: un proceso, reset antes de cada test, 5 s por paso; una base de datos agrega latencia y modos de falla sin beneficio</span></td><td><span lang="en">State lost on restart; single instance only</span><span lang="es">Se pierde el estado al reiniciar; una sola instancia</span></td></tr>
           <tr><td><span lang="en">Single event loop instead of locks</span><span lang="es">Event loop único en vez de locks</span></td><td><span lang="en">Mutexes / transactions</span><span lang="es">Mutex / transacciones</span></td><td><span lang="en">FR6: each handler is synchronous, so a request runs to completion without interleaving</span><span lang="es">FR6: cada handler es síncrono, así que un request corre completo sin intercalarse</span></td><td><span lang="en">Must keep handlers free of <code>await</code></span><span lang="es">Los handlers no pueden tener <code>await</code></span></td></tr>
