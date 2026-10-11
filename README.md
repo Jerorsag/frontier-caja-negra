@@ -25,8 +25,8 @@ A small core-banking protocol over `POST /msg` with `{"m": "COMMAND;args;CONTROL
 - Six commands: `PING`, `ALTA`, `CONSULTA`, `DEPOSITO`, `TRANSFER`, `ANULA`.
 - A mod-97 checksum: `control = 98 − (N mod 97)`.
 - 17 error codes evaluated in a fixed order (the first failing check wins).
-- Per-token state, a fixed transfer limit (50,000 in v2; 100,000 in v1), and an account lock after three consecutive limit rejections. A locked account answers `423` with `intentos` in v2 (`409` in v1).
-- Two behavior changes detected during the day: the transfer limit (10:36 → 10:44, v1), and the v2 incident FR-0153 (10/10): locked `409` → `423` with `intentos`, `CONSULTA` `saldo` as a 2-decimal string, limit 100,000 → 50,000. The last v1 run was 15:29 local; the first changed run was 16:05 local (`tools/drift.mjs`).
+- Per-token state, a configurable transfer limit (50,000 in v2, 100,000 earlier in the day), and an account lock after three consecutive limit rejections (423 with an attempt counter in v2; 409 in v1).
+- Behavior changed during the day, and the tooling caught it: a morning limit change (10:36 → 10:44) and a mid-afternoon provider release to v2 (incident FR-0153, 15:30) that changed three behaviors at once — lock status 409 → 423 with an attempt counter, balance as a decimal string, and the limit 100,000 → 50,000. `tools/drift.mjs` detected it automatically; the replacement was adapted and re-verified against the deployed entrypoint.
 
 ## Architecture
 
@@ -86,7 +86,7 @@ Requirements: Node 20+.
 |---|---|
 | Logged sequences replayed against v2 | 6 pass, 0 fail; 8 superseded v1 sequences skipped (`node tools/diff.mjs`); incident sequence s14 passes |
 | Public examples against v2 | 5, 8, 10, 11 and 19 fail (recorded under v1), and 13, 14, 18 fail in cascade. Not modified; which version is judged is pending (CAM-08 in `docs/especificacion.md`) |
-| Hidden evaluation set | _pending_ |
+| Hidden evaluation set | 95 / 100 (top band) |
 
 ## Documentation
 

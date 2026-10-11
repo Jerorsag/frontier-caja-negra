@@ -30,6 +30,8 @@ p{color:var(--muted);font-size:18px;margin:0 0 28px}
 code{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;font-size:.88em;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:.1em .35em}
 a.go{display:inline-block;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none;border-radius:10px;padding:12px 22px}
 a.go:hover{filter:brightness(1.08)}
+.actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+a.go.alt{background:transparent;color:var(--fg);border:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -39,7 +41,10 @@ a.go:hover{filter:brightness(1.08)}
   <h1 lang="es">¡Upss!</h1>
   <p lang="en">This page is still being built. The system design document lives at <code>/docs</code>.</p>
   <p lang="es">Esta página todavía está en construcción. El documento de diseño del sistema está en <code>/docs</code>.</p>
-  <a class="go" href="/docs"><span lang="en">Go to /docs →</span><span lang="es">Ir a /docs →</span></a>
+  <div class="actions">
+    <a class="go" href="/docs"><span lang="en">Go to /docs →</span><span lang="es">Ir a /docs →</span></a>
+    <a class="go alt" href="/pitch"><span lang="en">Pitch deck →</span><span lang="es">Presentación →</span></a>
+  </div>
 </main>
 <script>
 // same language + theme preferences as /docs (storage may be unavailable)
