@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La caja negra · Pitch</title>
+<meta name="description" content="Pitch de 7 diapositivas: reconstrucción de un servicio bancario sin documentación. Frontier · Reto 2 · Jerónimo Rodríguez.">
+<style>
+/* Design tokens copied from site/docs/index.html (dark theme), so /pitch matches /docs. */
+:root{
+  --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --muted:#8b949e; --faint:#21262d;
+  --accent:#58a6ff; --accent-soft:rgba(88,166,255,.10); --good:#3fb950; --code-bg:#161b22;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);overflow:hidden;
+  font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+
+/* slides: one fullscreen at a time */
+.slide{position:fixed;inset:0;display:none;flex-direction:column;justify-content:center;gap:clamp(18px,3.2vh,32px);
+  padding:0 min(11vw,150px);max-height:100vh;overflow:hidden;
+  background:radial-gradient(1100px 560px at 72% -8%,var(--accent-soft),transparent)}
+.slide.on{display:flex}
+
+.eyebrow{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;font-weight:500;text-transform:uppercase;
+  letter-spacing:.14em;font-size:clamp(16px,1.5vw,22px);color:var(--accent)}
+.bar{width:84px;height:5px;background:var(--accent);border-radius:3px}
+h1{font-size:clamp(56px,8vw,118px);line-height:.98;font-weight:700;letter-spacing:-.025em;max-width:16em}
+h2{font-size:clamp(40px,4.6vw,72px);line-height:1.08;font-weight:700;letter-spacing:-.015em;max-width:20em}
+p{font-size:clamp(22px,2.3vw,34px);line-height:1.4;color:var(--muted);max-width:36ch}
+p b{color:var(--fg);font-weight:600}
+.acc{color:var(--accent)}
+.who{font-size:clamp(18px,1.8vw,26px);color:var(--muted)}
+.who b{color:var(--fg);font-weight:600}
+
+/* checksum formula chip */
+.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;color:var(--accent);
+  background:var(--accent-soft);border:1px solid var(--border);border-radius:12px;
+  padding:.3em .7em;font-size:clamp(24px,2.8vw,44px);align-self:flex-start}
+
+/* big stat: edit the number here (slide 5) */
+.stat{font-size:clamp(96px,13vw,200px);line-height:1;font-weight:700;color:var(--good);letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums}
+
+ul{list-style:none;display:flex;flex-direction:column;gap:clamp(12px,2vh,22px)}
+li{display:flex;gap:16px;align-items:baseline;font-size:clamp(24px,2.5vw,38px);line-height:1.35;color:var(--muted);max-width:40ch}
+li b{color:var(--fg);font-weight:600}
+li::before{content:"▹";color:var(--accent);flex:none}
+
+/* chrome: back link, counter, progress */
+.back{position:fixed;top:22px;left:28px;z-index:5;font-size:15px;color:var(--muted);text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--accent);text-decoration:none;outline:none}
+.count{position:fixed;bottom:30px;right:40px;color:var(--muted);font:500 14px "JetBrains Mono",ui-monospace,Consolas,monospace;letter-spacing:.08em}
+.prog{position:fixed;bottom:0;left:0;height:4px;background:var(--accent);transition:width .3s ease}
+
+@media (max-width:700px){ .slide{padding:0 24px} .count{right:20px} }
+@media (prefers-reduced-motion:reduce){ .prog{transition:none} }
+</style>
+</head>
+<body>
+
+<a class="back" href="/docs">← docs</a>
+
+<!-- 1 · Título -->
+<section class="slide on" aria-label="1 de 7">
+  <div class="eyebrow">FRONTIER · RETO 2</div><div class="bar"></div>
+  <h1>La caja negra</h1>
+  <p>Ingeniería inversa de un servicio bancario sin documentar</p>
+  <div class="who"><b>Jerónimo Rodríguez</b> · reemplazo drop-in</div>
+</section>
+
+<!-- 2 · El problema -->
+<section class="slide" aria-label="2 de 7">
+  <div class="eyebrow">El problema</div><div class="bar"></div>
+  <h2>Un servicio de hace 10 años. Sin manual. Sin código.</h2>
+  <p>Había que construir un reemplazo que respondiera <b>idéntico al original</b>, errores incluidos.</p>
+</section>
+
+<!-- 3 · El método -->
+<section class="slide" aria-label="3 de 7">
+  <div class="eyebrow">El método</div><div class="bar"></div>
+  <h2>El original como <span class="acc">oráculo</span></h2>
+  <p>La única fuente de verdad era el propio servicio. Cada pregunta quedó en un log de 800+ interacciones que es a la vez evidencia y suite de pruebas.</p>
+</section>
+
+<!-- 4 · Descifrar el protocolo -->
+<section class="slide" aria-label="4 de 7">
+  <div class="eyebrow">Descifrar el protocolo</div><div class="bar"></div>
+  <h2>Comandos firmados con checksum</h2>
+  <span class="mono">control = 98 − (N mod 97)</span>
+  <p>Descifrado por fuerza bruta. Comandos ocultos hallados siguiendo las pistas de los mensajes de error.</p>
+</section>
+
+<!-- 5 · Reproducir -->
+<section class="slide" aria-label="5 de 7">
+  <div class="eyebrow">Reproducir</div><div class="bar"></div>
+  <h2>Monolito por capas · <span class="acc">nunca llama al original</span></h2>
+  <p>Reproduzco cada secuencia grabada contra mi réplica y comparo <b>byte a byte</b>.</p>
+  <!-- EDITAR AQUÍ: puntuación del set de evaluación oculto. Se muestra tal cual. -->
+  <div class="stat" id="score">85 / 100</div>
+  <p>set de evaluación oculto — banda alta</p>
+</section>
+
+<!-- 6 · El incidente -->
+<section class="slide" aria-label="6 de 7">
+  <div class="eyebrow">El incidente · 15:30</div><div class="bar"></div>
+  <h2>El proveedor cambió el servicio a mitad del día</h2>
+  <ul>
+    <li><span><b>Mi script de drift lo detectó solo</b> — 3 comportamientos cambiaron</span></li>
+    <li><span><b>Lo aislé</b> con un experimento nuevo</span></li>
+    <li><span><b>Corregí y reverifiqué</b> contra el entrypoint desplegado</span></li>
+  </ul>
+</section>
+
+<!-- 7 · Cierre -->
+<section class="slide" aria-label="7 de 7">
+  <div class="bar"></div>
+  <h1>Copié el <span class="acc">comportamiento</span>, no la deuda técnica.</h1>
+  <div class="who"><b>Jerónimo Rodríguez</b> · github.com/Jerorsag</div>
+</section>
+
+<div class="count" aria-live="polite"></div>
+<div class="prog"></div>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const count = document.querySelector('.count');
+  const prog = document.querySelector('.prog');
+  let i = 0;
+
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    count.textContent = (i + 1) + ' / ' + slides.length;
+    prog.style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+
+  // ArrowRight / Space = next, ArrowLeft = previous (Home/End jump to the ends)
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+
+  // click = next, except on links (the "← docs" link must navigate, not advance)
+  document.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    show(i + 1);
+  });
+
+  show(0);
+})();
+</script>
+</body>
+</html>
